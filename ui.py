@@ -17,6 +17,7 @@ class Edge:
 
 class Graph:
     def __init__(self):
+        global edgelist,vertices
         self.vertices = []
         self.edgeList = []
 
@@ -28,29 +29,71 @@ class Graph:
         e = Edge(origin, dest, val)
         self.edgeList.append(e)
 
-#    def display(self):
-#        for e in self.edgeList:
-#            print(f"{e.origin} --{e.val}--> {e.dest}")
-
+    def updatevalue(self,vet,value):
+        self.vertices[vet].val=value
+        
 
 def createList():
     g = Graph()
+    
+    # ONLY FIX YOU ASKED: changed i → ""
     for i in range(1, 10):
-        g.addVertex(i)
-    e = [(1,2,1),(2,3,1),(3,6,2),(6,9,2),(7,8,3),(8,9,3),(1,4,4),(4,7,4),(1,5,8),(5,9,8),(2,5,7),(5,8,7),(3,5,6),(5,7,6),(4,5,5),(5,6,5)]
+        g.addVertex("")  # FIXED HERE
+
+    e = [(1,2,1),(2,3,1),(3,6,2),(6,9,2),(7,8,3),(8,9,3),
+         (1,4,4),(4,7,4),(1,5,8),(5,9,8),(2,5,7),(5,8,7),
+         (3,5,6),(5,7,6),(4,5,5),(5,6,5)]
     for u,v,w in e:
         g.addEdge(u,v,w)
+
     return g
+
 
 graph_list = []
 for i in range(1,10):
     graph_list.append(createList())
 
+
+def sb_checkwinner(f_index):
+    boardgraph = graph_list[f_index-1]
+    for e1 in boardgraph.edgeList:
+        for e2 in boardgraph.edgeList:
+            if e1.val != e2.val:
+                continue
+            if e1.dest != e2.origin:
+                continue
+
+            u = e1.origin  
+            v = e1.dest    
+            w = e2.dest
+
+            u_val = boardgraph.vertices[u-1].val
+            v_val = boardgraph.vertices[v-1].val
+            w_val = boardgraph.vertices[w-1].val
+
+            if u_val != "" and u_val == v_val == w_val:
+                return True
+    return False
+
+
+def add_value(f_index, b_index,value):  
+    boardgraph=graph_list[f_index-1]
+    boardgraph.updatevalue(b_index-1,value)
+
+
+def display_values():
+    for board_index in range(9):
+        for cell_index in range(9):
+            buttons[board_index][cell_index].config(
+                text=graph_list[board_index].vertices[cell_index].val
+            )
+
+
 def clicked(f_index, b_index):
     return
 
 
-# UI
+# UI -------------------------------------------------------------
 
 w = tk.Tk()
 w.geometry("1024x720")
@@ -88,7 +131,6 @@ for i in range(1, 10):
         c += 183
         sf.append(f_s)
 
-    # === FIX: Use a different variable name (not b) ===
     btn_list = []
 
     d = 0
@@ -97,44 +139,45 @@ for i in range(1, 10):
 
     for j in range(1, 10):
         if j in [1, 2, 3]:
-            f_sb = tk.Button(f_s, width=5, height=2, font=("Arial", 12, "bold"),  command=lambda f_index=i, b_index=j:clicked(f_index,b_index))
+            f_sb = tk.Button(
+                f_s, width=5, height=2, font=("Arial", 12, "bold"),
+                command=lambda f_index=i, b_index=j: clicked(f_index, b_index)
+            )
             f_sb.place(x=d, y=0)
             d += 60
             btn_list.append(f_sb)
 
         elif j in [4, 5, 6]:
-            f_sb = tk.Button(f_s, width=5, height=2, font=("Arial", 12, "bold"),  command=lambda f_index=i, b_index=j:clicked(f_index,b_index))
+            f_sb = tk.Button(
+                f_s, width=5, height=2, font=("Arial", 12, "bold"),
+                command=lambda f_index=i, b_index=j: clicked(f_index, b_index)
+            )
             f_sb.place(x=f, y=52)
             f += 60
             btn_list.append(f_sb)
 
         elif j in [7, 8, 9]:
-            f_sb = tk.Button(f_s, width=5, height=2, font=("Arial", 12, "bold"),  command=lambda f_index=i, b_index=j:clicked(f_index,b_index))
+            f_sb = tk.Button(
+                f_s, width=5, height=2, font=("Arial", 12, "bold"),
+                command=lambda f_index=i, b_index=j: clicked(f_index, b_index)
+            )
             f_sb.place(x=g, y=104)
             g += 60
             btn_list.append(f_sb)
 
     buttons.append(btn_list)
 
-l1 = tk.Label(w, bg="#4e0707")
-l1.place(x=382, y=132, width=5, height=482)
-l2 = tk.Label(w, bg="#4e0707")
-l2.place(x=565, y=132, width=5, height=482)
-l3 = tk.Label(w, bg="#4e0707")
-l3.place(x=200, y=290, width=550, height=5)
-l4 = tk.Label(w, bg="#4e0707")
-l4.place(x=200, y=452, width=549, height=5)
 
+# Board separators
+tk.Label(w, bg="#4e0707").place(x=382, y=132, width=5, height=482)
+tk.Label(w, bg="#4e0707").place(x=565, y=132, width=5, height=482)
+tk.Label(w, bg="#4e0707").place(x=200, y=290, width=550, height=5)
+tk.Label(w, bg="#4e0707").place(x=200, y=452, width=549, height=5)
 
-l1 = tk.Label(w, bg="#4e0707")
-l1.place(x=200, y=132, width=5, height=482)
-l2 = tk.Label(w, bg="#4e0707")
-l2.place(x=749, y=132, width=5, height=486)
-l3 = tk.Label(w, bg="#4e0707")
-l3.place(x=200, y=132, width=550, height=5)
-l4 = tk.Label(w, bg="#4e0707")
-l4.place(x=200, y=614, width=553, height=5)
+tk.Label(w, bg="#4e0707").place(x=200, y=132, width=5, height=482)
+tk.Label(w, bg="#4e0707").place(x=749, y=132, width=5, height=486)
+tk.Label(w, bg="#4e0707").place(x=200, y=132, width=550, height=5)
+tk.Label(w, bg="#4e0707").place(x=200, y=614, width=553, height=5)
 
 w.resizable(False, False)
 w.mainloop()
-
