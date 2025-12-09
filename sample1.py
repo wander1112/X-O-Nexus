@@ -1,134 +1,183 @@
-class Vertex:
-    def __init__(self, val, position):
-        self.val = val
-        self.position = position
+import tkinter as tk
+from tkinter import messagebox
 
-    def __repr__(self):
-        return f"V({self.val})"
+# Classes
+
+class Vertex:
+    def __init__(self, val):
+        self.val = val
 
 
 class Edge:
-    def __init__(self, value, origin, dest):
-        self.value = value
-        self.origin = origin   # Vertex object
-        self.dest = dest       # Vertex object
-
-    def __repr__(self):
-        return f"E({self.origin.val}-{self.value}->{self.dest.val})"
+    def __init__(self, origin, dest, val):
+        self.val = val
+        self.origin = origin
+        self.dest = dest
 
 
 class Graph:
     def __init__(self):
+        global edgelist,vertices
         self.vertices = []
-        self.edgeList = []     # list of Edge objects
-        self.numEdges = 0
-        self.numVertices = 0
+        self.edgeList = []
 
     def addVertex(self, val):
-        v = Vertex(val, self.numVertices)
+        v = Vertex(val)
         self.vertices.append(v)
-        self.numVertices += 1
-        return v
 
-    def addEdge(self, val, origin, dest):
-        e = Edge(val, origin, dest)
+    def addEdge(self, origin, dest, val):
+        e = Edge(origin, dest, val)
         self.edgeList.append(e)
-        self.numEdges += 1
-        return e
 
-    def removeEdge(self, edge):
-        if edge in self.edgeList:
-            self.edgeList.remove(edge)
-            self.numEdges -= 1
-            return True
-        return False
+    def updatevalue(self,vet,value):
+        self.vertices[vet].val=value
+        
 
-    def removeVertex(self, vertex):
-        # Remove all edges touching this vertex
-        for e in self.edgeList[:]:     # copy list to remove safely
-            if e.origin is vertex or e.dest is vertex:
-                self.edgeList.remove(e)
-                self.numEdges -= 1
+def createList():
+    g = Graph()
+    
+    # ONLY FIX YOU ASKED: changed i → ""
+    for i in range(1, 10):
+        g.addVertex("")  # FIXED HERE
 
-        # Remove vertex
-        pos = vertex.position
-        self.vertices.pop(pos)
-        self.numVertices -= 1
+    e = [(1,2,1),(2,3,1),(3,6,2),(6,9,2),(7,8,3),(8,9,3),
+         (1,4,4),(4,7,4),(1,5,8),(5,9,8),(2,5,7),(5,8,7),
+         (3,5,6),(5,7,6),(4,5,5),(5,6,5)]
+    for u,v,w in e:
+        g.addEdge(u,v,w)
 
-        # Update vertex positions
-        for i in range(pos, len(self.vertices)):
-            self.vertices[i].position = i
-
-    def display(self):
-        for e in self.vertices:
-            print(e.val)
-
-    def bfs_edgelist(graph, start_vertex):
-        visited = {}
-        order = []
-        q = [start_vertex]
-        head = 0
-
-        while head < len(q):
-            v = q[head]
-            head += 1
-            if not (v in visited):
-                visited[v] = True
-                order.append(v.val)
-                i = 0
-                while i < len(graph.edgeList):
-                    e = graph.edgeList[i]
-                    if e.origin is v:
-                        if not (e.dest in visited):
-                            q.append(e.dest)
-                    i += 1
-
-        print("BFS Traversal:", order)
-        return order
+    return g
 
 
-    def dfs_edgelist(graph, start_vertex):
-        visited = {}
-        order = []
-        stack = [start_vertex]
-
-        while stack:
-            v = stack.pop()
-            if not (v in visited):
-                visited[v] = True
-                order.append(v.val)
-                i = len(graph.edgeList) - 1
-                while i >= 0:
-                    e = graph.edgeList[i]
-                    if e.origin is v:
-                        if not (e.dest in visited):
-                            stack.append(e.dest)
-                    i -= 1
-
-        print("DFS Traversal:", order)
-        return order
+graph_list = []
+for i in range(1,10):
+    graph_list.append(createList())
 
 
+def sb_checkwinner(f_index):
+    boardgraph = graph_list[f_index-1]
+    for e1 in boardgraph.edgeList:
+        for e2 in boardgraph.edgeList:
+            if e1.val != e2.val:
+                continue
+            if e1.dest != e2.origin:
+                continue
 
-g = Graph()
-v1 = g.addVertex(1)
-v2 = g.addVertex(2)
-v3 = g.addVertex(3)
-v4 = g.addVertex(4)
-v5 = g.addVertex(5)
-'''
-g.addEdge('a', v1, v2)
-g.addEdge('c', v5, v3)
-g.addEdge('d', v2, v4)
-g.addEdge('e', v1, v3)
+            u = e1.origin  
+            v = e1.dest    
+            w = e2.dest
 
-g.display()
+            u_val = boardgraph.vertices[u-1].val
+            v_val = boardgraph.vertices[v-1].val
+            w_val = boardgraph.vertices[w-1].val
 
-print("\nRemoving vertex 2...")
-g.removeVertex(v2)
+            if u_val != "" and u_val == v_val == w_val:
+                return True
+    return False
 
-g.bfs_edgelist(v1)
-g.dfs_edgelist(v1)
 
-'''
-g.display()
+def add_value(f_index, b_index,value):  
+    boardgraph=graph_list[f_index-1]
+    boardgraph.updatevalue(b_index-1,value)
+
+
+def display_values():
+    for board_index in range(9):
+        for cell_index in range(9):
+            buttons[board_index][cell_index].config(
+                text=graph_list[board_index].vertices[cell_index].val
+            )
+
+
+def clicked(f_index, b_index):
+    return
+
+
+# UI -------------------------------------------------------------
+
+w = tk.Tk()
+w.geometry("1024x720")
+w.title("X-O Nexus")
+
+f_bg = tk.Frame(w, bd=2, relief="ridge", bg="#f7e7ce")
+f_bg.place(x=0, y=0, height=720, width=1024)
+
+l1 = tk.Label(w, text="X-O Nexus", font=("Arial", 24, "bold"), bg="#f7e7ce")
+l1.place(x=425, y=50)
+
+sf = []
+buttons = []
+
+a = 200
+bpos = 200
+c = 200
+
+for i in range(1, 10):
+    if i in [1, 2, 3]:
+        f_s = tk.Frame(f_bg, bd=2, relief="ridge", bg="white")
+        f_s.place(x=a, y=130, height=160, width=180)
+        a += 183
+        sf.append(f_s)
+
+    elif i in [4, 5, 6]:
+        f_s = tk.Frame(f_bg, bd=2, relief="ridge", bg="white")
+        f_s.place(x=bpos, y=292, height=160, width=180)
+        bpos += 183
+        sf.append(f_s)
+
+    elif i in [7, 8, 9]:
+        f_s = tk.Frame(f_bg, bd=2, relief="ridge", bg="white")
+        f_s.place(x=c, y=454, height=160, width=180)
+        c += 183
+        sf.append(f_s)
+
+    btn_list = []
+
+    d = 0
+    f = 0
+    g = 0
+
+    for j in range(1, 10):
+        if j in [1, 2, 3]:
+            f_sb = tk.Button(
+                f_s, width=5, height=2, font=("Arial", 12, "bold"),
+                command=lambda f_index=i, b_index=j: clicked(f_index, b_index)
+            )
+            f_sb.place(x=d, y=0)
+            d += 60
+            btn_list.append(f_sb)
+
+        elif j in [4, 5, 6]:
+            f_sb = tk.Button(
+                f_s, width=5, height=2, font=("Arial", 12, "bold"),
+                command=lambda f_index=i, b_index=j: clicked(f_index, b_index)
+            )
+            f_sb.place(x=f, y=52)
+            f += 60
+            btn_list.append(f_sb)
+
+        elif j in [7, 8, 9]:
+            f_sb = tk.Button(
+                f_s, width=5, height=2, font=("Arial", 12, "bold"),
+                command=lambda f_index=i, b_index=j: clicked(f_index, b_index)
+            )
+            f_sb.place(x=g, y=104)
+            g += 60
+            btn_list.append(f_sb)
+
+    buttons.append(btn_list)
+
+
+# Board separators
+tk.Label(w, bg="#4e0707").place(x=382, y=132, width=5, height=482)
+tk.Label(w, bg="#4e0707").place(x=565, y=132, width=5, height=482)
+tk.Label(w, bg="#4e0707").place(x=200, y=290, width=550, height=5)
+tk.Label(w, bg="#4e0707").place(x=200, y=452, width=549, height=5)
+
+tk.Label(w, bg="#4e0707").place(x=200, y=132, width=5, height=482)
+tk.Label(w, bg="#4e0707").place(x=749, y=132, width=5, height=486)
+tk.Label(w, bg="#4e0707").place(x=200, y=132, width=550, height=5)
+tk.Label(w, bg="#4e0707").place(x=200, y=614, width=553, height=5)
+
+w.resizable(False, False)
+w.mainloop()
