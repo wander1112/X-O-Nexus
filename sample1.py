@@ -36,9 +36,9 @@ class Graph:
 def createList():
     g = Graph()
     
-    # ONLY FIX YOU ASKED: changed i → ""
+
     for i in range(1, 10):
-        g.addVertex("")  # FIXED HERE
+        g.addVertex("")  
 
     e = [(1,2,1),(2,3,1),(3,6,2),(6,9,2),(7,8,3),(8,9,3),
          (1,4,4),(4,7,4),(1,5,8),(5,9,8),(2,5,7),(5,8,7),
