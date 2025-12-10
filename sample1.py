@@ -89,9 +89,46 @@ def display_values():
             )
 
 
-def clicked(f_index, b_index):
-    return
 
+
+def disable_button():
+    global buttons
+    for i in buttons:
+        for j in i:
+            j.config(state="disabled")
+
+def greedy():
+    #if there is a win condition, play the winning move
+        #win condition  there is an edge in the graph with a value and a vertex is free
+    #else, random
+        #if valid move, then proceed
+        #else, call random again
+    #return the move
+
+def cpu_move(b_index):
+    f_index = b_index
+    cpu.b_index = greedy()
+
+
+
+def clicked(f_index, b_index):
+    #funtions that should be implemented
+    #disable the button once the user clicked 
+    #check for the winner (calling the function)
+    #cpus move
+    #update the enable buttons 
+    
+    disable_button()
+    add_value(f_index,b_index,"X")
+    display_values()
+    sb_checkwinner(f_index)
+
+    
+
+
+
+
+        
 
 # UI -------------------------------------------------------------
 
