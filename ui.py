@@ -5,19 +5,19 @@ import random
 # Classes
 
 class Vertex:
-    def _init_(self, val):
+    def __init__(self, val):
         self.val = val
 
 
 class Edge:
-    def _init_(self, origin, dest, val):
+    def __init__(self, origin, dest, val):
         self.val = val
         self.origin = origin
         self.dest = dest
 
 
 class Graph:
-    def _init_(self):
+    def __init__(self):
         global edgelist,vertices
         self.vertices = []
         self.edgeList = []
@@ -59,7 +59,63 @@ def add_label(val,f_index):
       
     l = tk.Label(sf[f_index-1], text=f"{val}", font=("Arial", 38, "bold"), bg="#f7e7ce")
     l.place(x=0, y=0,height=160,width=180)
+def show_big_winner(winner):
+    popup = tk.Toplevel(w)
+    popup.title("Game Over")
+    popup.geometry("300x160")
+    popup.resizable(False, False)
+    popup.config(bg="#f7e7ce")
 
+    tk.Label(
+        popup,
+        text=f"Player {winner} WON the big board!",
+        font=("Arial", 14, "bold"),
+        bg="#f7e7ce"
+    ).pack(pady=20)
+
+    # Play Again
+    tk.Button(
+        popup,
+        text="Play Again",
+        font=("Arial", 12, "bold"),
+        bg="#0078FF",
+        fg="white",
+        relief="flat",
+        command=lambda: (popup.destroy(), reset_game())
+    ).pack(pady=5)
+
+    # Exit
+    tk.Button(
+        popup,
+        text="Exit",
+        font=("Arial", 12, "bold"),
+        bg="#FF4C4C",
+        fg="white",
+        relief="flat",
+        command=w.destroy
+    ).pack(pady=5)
+
+def bb_checkwinner():
+    boardgraph=big_boardgraph
+    for e1 in boardgraph.edgeList:
+        for e2 in boardgraph.edgeList:
+            if e1.val != e2.val:
+                continue
+            if e1.dest != e2.origin:
+                continue
+
+            u = e1.origin  
+            v = e1.dest    
+            w = e2.dest
+
+            u_val = boardgraph.vertices[u-1].val
+            v_val = boardgraph.vertices[v-1].val
+            w_val = boardgraph.vertices[w-1].val
+
+            if u_val != "" and u_val == v_val == w_val:
+                show_big_winner(u_val)
+                return True            
+    return False
 def sb_checkwinner(f_index):
     boardgraph = graph_list[f_index-1]
     for e1 in boardgraph.edgeList:
@@ -79,7 +135,7 @@ def sb_checkwinner(f_index):
 
             if u_val != "" and u_val == v_val == w_val:
                 print("winner")
-                big_boardgraph.updatevalue(f_index,v_val)
+                big_boardgraph.updatevalue(f_index-1,v_val)
                 add_label(v_val,f_index)
                 return True            
     return False
@@ -106,23 +162,11 @@ def enable_button_all(f_index):
         for i in  buttons[f_index]:
             i.config(state="disabled")
 
-
-
 def disable_button():
     global buttons
     for i in buttons:
         for j in i:
             j.config(state="disabled")
-
-#def greedy():
-    #if there is a win condition, play the winning move
-        #win condition  there is an edge in the graph with a value and a vertex is free
-    #else, random
-        #if valid move, then proceed
-        #else, call random again
-    #return the move
-
-
 def cpu_move(b_index):
     playframe = graph_list[b_index-1]
     if big_boardgraph.vertices[b_index-1] in ["X","O"]:
@@ -181,32 +225,57 @@ def enable_button(f_index):
        
 
 
+def displaymove(a):
+
+
+    l = tk.Label(f_bg, text=f"CPU made it's move in cell {a+1},YOU next move should done {a+1}", font=("Arial", 16, "bold"), bg="#f7e7ce")
+    l.place(x=180, y=620)
 
 
 
 def clicked(f_index, b_index):
-    #funtions that should be implemented
-    #disable the button once the user clicked 
-    #check for the winner (calling the function)
-    #cpus move
-    #update the enable buttons 
-    
     disable_button()
-    
-    add_value(f_index,b_index,"X")
+
+    # Player move
+    add_value(f_index, b_index, "X")
     display_values()
-    sb_checkwinner(f_index)
-    global cpu_index
-    a=cpu_move(b_index)
+    sb_checkwinner(f_index)   # small board check
+
+    # Check big board win after player's move
+    bb_checkwinner()
+
+    # CPU move
+    a = cpu_move(b_index)
     sb_checkwinner(b_index)
+    displaymove(a)
     enable_button(a)
     display_values()
-    
+
+    # Check big board win after CPU move
+    bb_checkwinner()
 
     
 
+def reset_game():
+    global graph_list, big_boardgraph
 
+    # Recreate the 9 small boards
+    graph_list = []
+    for _ in range(9):
+        graph_list.append(createList())
 
+    # Reset the big board graph
+    big_boardgraph = createList()
+
+    # Clear all button text
+    for board in buttons:
+        for btn in board:
+            btn.config(text="", state="normal")
+
+    # Remove winner labels / move messages
+    for widget in f_bg.winfo_children():
+        if isinstance(widget, tk.Label) and "CPU made" in widget.cget("text"):
+            widget.destroy()
 
         
 
@@ -295,6 +364,8 @@ tk.Label(w, bg="#4e0707").place(x=200, y=132, width=5, height=482)
 tk.Label(w, bg="#4e0707").place(x=749, y=132, width=5, height=486)
 tk.Label(w, bg="#4e0707").place(x=200, y=132, width=550, height=5)
 tk.Label(w, bg="#4e0707").place(x=200, y=614, width=553, height=5)
+tk.Button(w, text="RESET", font=("Arial", 14, "bold"), relief="groove", command=reset_game).place(x=240, y=650)
+
 
 w.resizable(False, False)
 w.mainloop()
