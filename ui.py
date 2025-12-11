@@ -5,19 +5,19 @@ import random
 # Classes
 
 class Vertex:
-    def __init__(self, val):
+    def _init_(self, val):
         self.val = val
 
 
 class Edge:
-    def __init__(self, origin, dest, val):
+    def _init_(self, origin, dest, val):
         self.val = val
         self.origin = origin
         self.dest = dest
 
 
 class Graph:
-    def __init__(self):
+    def _init_(self):
         global edgelist,vertices
         self.vertices = []
         self.edgeList = []
@@ -123,6 +123,55 @@ def disable_button():
     #return the move
 
 
+def cpu_move(b_index):
+    playframe = graph_list[b_index-1]
+    if big_boardgraph.vertices[b_index-1] in ["X","O"]:
+        pass
+    # Try to win or block
+    for e1 in playframe.edgeList:
+        for e2 in playframe.edgeList:
+            if e1.val != e2.val:
+                continue
+            if e1.dest != e2.origin:
+                continue
+            u = e1.origin
+            v = e1.dest
+            w = e2.dest
+
+            u_val = playframe.vertices[u-1].val
+            v_val = playframe.vertices[v-1].val
+            w_val = playframe.vertices[w-1].val
+
+            # Case 1: u == v -> play w
+            if u_val == v_val and u_val in ["X","O"]:
+                if w_val not in ["X","O"]:
+                    playframe.updatevalue(w-1, "O")
+                    return w-1
+
+            # Case 2: v == w -> play u
+            if v_val == w_val and v_val in ["X","O"]:
+                if u_val not in ["X","O"]:
+                    playframe.updatevalue(u-1, "O")
+                    return u-1
+
+            # Case 3: u == w -> play v
+            if u_val == w_val and u_val in ["X","O"]:
+                if v_val not in ["X","O"]:
+                    playframe.updatevalue(v-1, "O")
+                    return v-1
+
+    # Random move
+    empty_positions = [
+        i for i, v in enumerate(playframe.vertices)
+        if v.val not in ("X", "O")
+    ]
+
+    if empty_positions:
+        choice = random.choice(empty_positions)
+        playframe.updatevalue(choice, "O")
+        return choice
+
+    return None
 
 
 def enable_button(f_index):
