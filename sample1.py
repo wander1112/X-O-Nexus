@@ -1,22 +1,23 @@
 import tkinter as tk
 from tkinter import messagebox
 
+import random
 # Classes
 
 class Vertex:
-    def __init__(self, val):
+    def _init_(self, val):
         self.val = val
 
 
 class Edge:
-    def __init__(self, origin, dest, val):
+    def _init_(self, origin, dest, val):
         self.val = val
         self.origin = origin
         self.dest = dest
 
 
 class Graph:
-    def __init__(self):
+    def _init_(self):
         global edgelist,vertices
         self.vertices = []
         self.edgeList = []
@@ -53,6 +54,11 @@ graph_list = []
 for i in range(1,10):
     graph_list.append(createList())
 
+big_boardgraph=createList()
+def add_label(val,f_index):
+      
+    l = tk.Label(sf[f_index-1], text=f"{val}", font=("Arial", 38, "bold"), bg="#f7e7ce")
+    l.place(x=0, y=0,height=160,width=180)
 
 def sb_checkwinner(f_index):
     boardgraph = graph_list[f_index-1]
@@ -72,7 +78,10 @@ def sb_checkwinner(f_index):
             w_val = boardgraph.vertices[w-1].val
 
             if u_val != "" and u_val == v_val == w_val:
-                return True
+                print("winner")
+                big_boardgraph.updatevalue(f_index,v_val)
+                add_label(v_val,f_index)
+                return True            
     return False
 
 
@@ -90,6 +99,14 @@ def display_values():
 
 
 
+def enable_button_all(f_index):
+        for i in buttons:
+         for j in i:
+            j.config(state="normal")
+        for i in  buttons[f_index]:
+            i.config(state="disabled")
+
+
 
 def disable_button():
     global buttons
@@ -97,7 +114,7 @@ def disable_button():
         for j in i:
             j.config(state="disabled")
 
-def greedy():
+#def greedy():
     #if there is a win condition, play the winning move
         #win condition  there is an edge in the graph with a value and a vertex is free
     #else, random
@@ -105,9 +122,65 @@ def greedy():
         #else, call random again
     #return the move
 
+
 def cpu_move(b_index):
-    f_index = b_index
-    cpu.b_index = greedy()
+    playframe = graph_list[b_index-1]
+    if big_boardgraph.vertices[b_index-1] in ["X","O"]:
+        pass
+    # Try to win or block
+    for e1 in playframe.edgeList:
+        for e2 in playframe.edgeList:
+            if e1.val != e2.val:
+                continue
+            if e1.dest != e2.origin:
+                continue
+            u = e1.origin
+            v = e1.dest
+            w = e2.dest
+
+            u_val = playframe.vertices[u-1].val
+            v_val = playframe.vertices[v-1].val
+            w_val = playframe.vertices[w-1].val
+
+            # Case 1: u == v -> play w
+            if u_val == v_val and u_val in ["X","O"]:
+                if w_val not in ["X","O"]:
+                    playframe.updatevalue(w-1, "O")
+                    return w-1
+
+            # Case 2: v == w -> play u
+            if v_val == w_val and v_val in ["X","O"]:
+                if u_val not in ["X","O"]:
+                    playframe.updatevalue(u-1, "O")
+                    return u-1
+
+            # Case 3: u == w -> play v
+            if u_val == w_val and u_val in ["X","O"]:
+                if v_val not in ["X","O"]:
+                    playframe.updatevalue(v-1, "O")
+                    return v-1
+
+    # Random move
+    empty_positions = [
+        i for i, v in enumerate(playframe.vertices)
+        if v.val not in ("X", "O")
+    ]
+
+    if empty_positions:
+        choice = random.choice(empty_positions)
+        playframe.updatevalue(choice, "O")
+        return choice
+
+    return None
+
+
+def enable_button(f_index):
+       
+        for i in  buttons[f_index]:
+            i.config(state="normal")
+       
+
+
 
 
 
@@ -119,9 +192,16 @@ def clicked(f_index, b_index):
     #update the enable buttons 
     
     disable_button()
+    
     add_value(f_index,b_index,"X")
     display_values()
     sb_checkwinner(f_index)
+    global cpu_index
+    a=cpu_move(b_index)
+    sb_checkwinner(b_index)
+    enable_button(a)
+    display_values()
+    
 
     
 
