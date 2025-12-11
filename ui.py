@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import messagebox
 
+import random
 # Classes
 
 class Vertex:
@@ -53,6 +54,11 @@ graph_list = []
 for i in range(1,10):
     graph_list.append(createList())
 
+big_boardgraph=createList()
+def add_label(val,f_index):
+      
+    l = tk.Label(sf[f_index-1], text=f"{val}", font=("Arial", 38, "bold"), bg="#f7e7ce")
+    l.place(x=0, y=0,height=160,width=180)
 
 def sb_checkwinner(f_index):
     boardgraph = graph_list[f_index-1]
@@ -72,7 +78,10 @@ def sb_checkwinner(f_index):
             w_val = boardgraph.vertices[w-1].val
 
             if u_val != "" and u_val == v_val == w_val:
-                return True
+                print("winner")
+                big_boardgraph.updatevalue(f_index,v_val)
+                add_label(v_val,f_index)
+                return True            
     return False
 
 
@@ -90,6 +99,14 @@ def display_values():
 
 
 
+def enable_button_all(f_index):
+        for i in buttons:
+         for j in i:
+            j.config(state="normal")
+        for i in  buttons[f_index]:
+            i.config(state="disabled")
+
+
 
 def disable_button():
     global buttons
@@ -97,7 +114,7 @@ def disable_button():
         for j in i:
             j.config(state="disabled")
 
-def greedy():
+#def greedy():
     #if there is a win condition, play the winning move
         #win condition  there is an edge in the graph with a value and a vertex is free
     #else, random
@@ -105,9 +122,16 @@ def greedy():
         #else, call random again
     #return the move
 
-def cpu_move(b_index):
-    f_index = b_index
-    cpu.b_index = greedy()
+
+
+
+def enable_button(f_index):
+       
+        for i in  buttons[f_index]:
+            i.config(state="normal")
+       
+
+
 
 
 
@@ -119,9 +143,16 @@ def clicked(f_index, b_index):
     #update the enable buttons 
     
     disable_button()
+    
     add_value(f_index,b_index,"X")
     display_values()
     sb_checkwinner(f_index)
+    global cpu_index
+    a=cpu_move(b_index)
+    sb_checkwinner(b_index)
+    enable_button(a)
+    display_values()
+    
 
     
 
