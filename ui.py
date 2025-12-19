@@ -53,12 +53,13 @@ def createList():
 graph_list = []
 for i in range(1,10):
     graph_list.append(createList())
-
 big_boardgraph=createList()
+
 def add_label(val,f_index):
       
     l = tk.Label(sf[f_index-1], text=f"{val}", font=("Arial", 38, "bold"), bg="#f7e7ce")
     l.place(x=0, y=0,height=160,width=180)
+
 def show_big_winner(winner):
     popup = tk.Toplevel(w)
     popup.title("Game Over")
@@ -68,7 +69,7 @@ def show_big_winner(winner):
 
     tk.Label(
         popup,
-        text=f"Player {winner} WON the big board!",
+        text=f"Player {winner} won the big board!",
         font=("Arial", 14, "bold"),
         bg="#f7e7ce"
     ).pack(pady=20)
@@ -116,6 +117,7 @@ def bb_checkwinner():
                 show_big_winner(u_val)
                 return True            
     return False
+
 def sb_checkwinner(f_index):
     boardgraph = graph_list[f_index-1]
     for e1 in boardgraph.edgeList:
@@ -137,7 +139,8 @@ def sb_checkwinner(f_index):
                 print("winner")
                 big_boardgraph.updatevalue(f_index-1,v_val)
                 add_label(v_val,f_index)
-                return True            
+                return True  
+            
     return False
 
 
@@ -167,10 +170,21 @@ def disable_button():
     for i in buttons:
         for j in i:
             j.config(state="disabled")
+
+
+
 def cpu_move(b_index):
-    playframe = graph_list[b_index-1]
-    if big_boardgraph.vertices[b_index-1] in ["X","O"]:
-        pass
+    playframe = graph_list[b_index-1] 
+    f=b_index-1
+    if big_boardgraph.vertices[b_index-1].val in ["X","O"]:
+        b=[]
+        for i in range(9):
+                if big_boardgraph.vertices[i].val  not in ["X","O"]:
+                    print(i)
+                    b.append(i)
+        playframe = graph_list[random.choice(b)] 
+        f=random.choice(b)
+     
     # Try to win or block
     for e1 in playframe.edgeList:
         for e2 in playframe.edgeList:
@@ -190,139 +204,163 @@ def cpu_move(b_index):
             if u_val == v_val and u_val in ["X","O"]:
                 if w_val not in ["X","O"]:
                     playframe.updatevalue(w-1, "O")
-                    return w-1
+                    return w-1,f
 
             # Case 2: v == w -> play u
             if v_val == w_val and v_val in ["X","O"]:
                 if u_val not in ["X","O"]:
                     playframe.updatevalue(u-1, "O")
-                    return u-1
+                    return u-1,f
 
             # Case 3: u == w -> play v
             if u_val == w_val and u_val in ["X","O"]:
                 if v_val not in ["X","O"]:
                     playframe.updatevalue(v-1, "O")
-                    return v-1
+                    return v-1,f
+    # Center is free 
+    if playframe.vertices[4].val not in ["X","O"]:
+         playframe.updatevalue(4, "O")
+         return 4,f
+    
+    # Corner is free
+    vl=[]
+    for i in [0,2,6,8]:
+        if playframe.vertices[i].val not in ["X","O"]:
+            vl.append(i)
+    if vl is not None:
+        vp=random.choice(vl)
+        playframe.updatevalue(vp, "O")
+        return vp,f
 
-    # Random move
+    # Default
     empty_positions = [
         i for i, v in enumerate(playframe.vertices)
         if v.val not in ("X", "O")
     ]
-
     if empty_positions:
         choice = random.choice(empty_positions)
         playframe.updatevalue(choice, "O")
-        return choice
-
+        return choice,f
+    
     return None
 
 
 def enable_button(f_index):
-       
         for i in  buttons[f_index]:
             i.config(state="normal")
        
 
 
-def displaymove(a):
+def displaymove(a,v,f):
+    if v == "notallowed":
+        l = tk.Label(f_bg, text=f"Opponent played F{f+1} C{a+1}. Make a move in any unoccupied frame.", font=("Arial", 16, "bold"), bg="#f7e7ce")
+        l.place(x=180, y=620)
+    else: 
+        l = tk.Label(f_bg, text=f"Opponent played F{f+1} C{a+1}. Your next move should be played in F{a+1}.", font=("Arial", 16, "bold"), bg="#f7e7ce")
+        l.place(x=180, y=620)
 
+def cpu_turn(b_index):
+    # CPU makes its move
+    a,f = cpu_move(b_index)
 
-    l = tk.Label(f_bg, text=f"CPU made it's move in cell {a+1},YOU next move should done {a+1}", font=("Arial", 16, "bold"), bg="#f7e7ce")
-    l.place(x=180, y=620)
+    # Update UI after CPU move
+    sb_checkwinner(b_index)
+    display_values()
+    
+    if big_boardgraph.vertices[a].val in ["X","O"]:
+        b=[]
+        for i in range(9):
+                if big_boardgraph.vertices[i].val  not in ["X","O"]:
+                    print("player:",i)
+                    b.append(i)
+        for j in b:
+             enable_button(j)
+        displaymove(a,"notallowed",f)
+    # Enable next allowed board
+    else:
+        displaymove(a,"allowed",f)
+        enable_button(a)
 
+    # Check big board winner after CPU move
+    bb_checkwinner()
 
 
 def clicked(f_index, b_index):
+    # Disable everything immediately
     disable_button()
 
     # Player move
     add_value(f_index, b_index, "X")
     display_values()
-    sb_checkwinner(f_index)   # small board check
 
-    # Check big board win after player's move
-    bb_checkwinner()
+    # Check small board win
+    sb_checkwinner(f_index)
 
-    # CPU move
-    a = cpu_move(b_index)
-    sb_checkwinner(b_index)
-    displaymove(a)
-    enable_button(a)
-    display_values()
+    # Check big board win after player move
+    if bb_checkwinner():
+        return
 
-    # Check big board win after CPU move
-    bb_checkwinner()
+    # Delay then move
+    w.after(700, lambda: cpu_turn(b_index))
 
     
-
 def reset_game():
     global graph_list, big_boardgraph
 
-    # Recreate the 9 small boards
     graph_list = []
     for _ in range(9):
         graph_list.append(createList())
 
-    # Reset the big board graph
     big_boardgraph = createList()
 
-    # Clear all button text
     for board in buttons:
         for btn in board:
             btn.config(text="", state="normal")
 
-    # Remove winner labels / move messages
     for widget in f_bg.winfo_children():
         if isinstance(widget, tk.Label) and "CPU made" in widget.cget("text"):
             widget.destroy()
 
+    for frame in sf:
+        for widget in frame.winfo_children():
+            if isinstance(widget, tk.Label):
+                widget.destroy()
+
         
 
-# UI -------------------------------------------------------------
-
+# UI
 w = tk.Tk()
 w.geometry("1024x720")
 w.title("X-O Nexus")
-
 f_bg = tk.Frame(w, bd=2, relief="ridge", bg="#f7e7ce")
 f_bg.place(x=0, y=0, height=720, width=1024)
-
 l1 = tk.Label(w, text="X-O Nexus", font=("Arial", 24, "bold"), bg="#f7e7ce")
-l1.place(x=425, y=50)
-
+l1.place(x=437, y=40)
 sf = []
 buttons = []
-
-a = 200
-bpos = 200
-c = 200
-
+a = 238
+bpos = 238
+c = 238
 for i in range(1, 10):
     if i in [1, 2, 3]:
         f_s = tk.Frame(f_bg, bd=2, relief="ridge", bg="white")
-        f_s.place(x=a, y=130, height=160, width=180)
+        f_s.place(x=a, y=110, height=160, width=180)
         a += 183
         sf.append(f_s)
-
     elif i in [4, 5, 6]:
         f_s = tk.Frame(f_bg, bd=2, relief="ridge", bg="white")
-        f_s.place(x=bpos, y=292, height=160, width=180)
+        f_s.place(x=bpos, y=272, height=160, width=180)
         bpos += 183
         sf.append(f_s)
-
     elif i in [7, 8, 9]:
         f_s = tk.Frame(f_bg, bd=2, relief="ridge", bg="white")
-        f_s.place(x=c, y=454, height=160, width=180)
+        f_s.place(x=c, y=434, height=160, width=180)
         c += 183
         sf.append(f_s)
-
     btn_list = []
-
     d = 0
     f = 0
     g = 0
-
     for j in range(1, 10):
         if j in [1, 2, 3]:
             f_sb = tk.Button(
@@ -332,7 +370,6 @@ for i in range(1, 10):
             f_sb.place(x=d, y=0)
             d += 60
             btn_list.append(f_sb)
-
         elif j in [4, 5, 6]:
             f_sb = tk.Button(
                 f_s, width=5, height=2, font=("Arial", 12, "bold"),
@@ -341,7 +378,6 @@ for i in range(1, 10):
             f_sb.place(x=f, y=52)
             f += 60
             btn_list.append(f_sb)
-
         elif j in [7, 8, 9]:
             f_sb = tk.Button(
                 f_s, width=5, height=2, font=("Arial", 12, "bold"),
@@ -350,22 +386,17 @@ for i in range(1, 10):
             f_sb.place(x=g, y=104)
             g += 60
             btn_list.append(f_sb)
-
     buttons.append(btn_list)
-
-
 # Board separators
-tk.Label(w, bg="#4e0707").place(x=382, y=132, width=5, height=482)
-tk.Label(w, bg="#4e0707").place(x=565, y=132, width=5, height=482)
-tk.Label(w, bg="#4e0707").place(x=200, y=290, width=550, height=5)
-tk.Label(w, bg="#4e0707").place(x=200, y=452, width=549, height=5)
-
-tk.Label(w, bg="#4e0707").place(x=200, y=132, width=5, height=482)
-tk.Label(w, bg="#4e0707").place(x=749, y=132, width=5, height=486)
-tk.Label(w, bg="#4e0707").place(x=200, y=132, width=550, height=5)
-tk.Label(w, bg="#4e0707").place(x=200, y=614, width=553, height=5)
-tk.Button(w, text="RESET", font=("Arial", 14, "bold"), relief="groove", command=reset_game).place(x=240, y=650)
-
+tk.Label(w, bg="#4e0707").place(x=420, y=112, width=5, height=482)
+tk.Label(w, bg="#4e0707").place(x=603, y=112, width=5, height=482)
+tk.Label(w, bg="#4e0707").place(x=238, y=270, width=550, height=5)
+tk.Label(w, bg="#4e0707").place(x=238, y=432, width=549, height=5)
+tk.Label(w, bg="#4e0707").place(x=238, y=112, width=5, height=482)
+tk.Label(w, bg="#4e0707").place(x=787, y=112, width=5, height=486)
+tk.Label(w, bg="#4e0707").place(x=238, y=112, width=550, height=5)
+tk.Label(w, bg="#4e0707").place(x=238, y=594, width=553, height=5)
+tk.Button(w, text="RESET", font=("Arial", 14, "bold"), relief="groove", command=reset_game).place(x=462, y=665)
 
 w.resizable(False, False)
 w.mainloop()
