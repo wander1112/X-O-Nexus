@@ -5,19 +5,19 @@ import random
 # Classes
 
 class Vertex:
-    def __init__(self, val):
+    def _init_(self, val):
         self.val = val
 
 
 class Edge:
-    def __init__(self, origin, dest, val):
+    def _init_(self, origin, dest, val):
         self.val = val
         self.origin = origin
         self.dest = dest
 
 
 class Graph:
-    def __init__(self):
+    def _init_(self):
         global edgelist,vertices
         self.vertices = []
         self.edgeList = []
@@ -67,12 +67,21 @@ def show_big_winner(winner):
     popup.resizable(False, False)
     popup.config(bg="#f7e7ce")
 
-    tk.Label(
-        popup,
-        text=f"Player {winner} won the big board!",
-        font=("Arial", 14, "bold"),
-        bg="#f7e7ce"
-    ).pack(pady=20)
+    if winner in ["X","O"]:
+        tk.Label(
+            popup,
+            text=f"Player {winner} won the big board!",
+            font=("Arial", 14, "bold"),
+            bg="#f7e7ce"
+        ).pack(pady=20)
+    else:
+        tk.Label(
+            popup,
+            text=f"Draw!",
+            font=("Arial", 14, "bold"),
+            bg="#f7e7ce"
+        ).pack(pady=20)
+    
 
     # Play Again
     tk.Button(
@@ -115,7 +124,19 @@ def bb_checkwinner():
 
             if u_val != "" and u_val == v_val == w_val:
                 show_big_winner(u_val)
-                return True            
+                return True
+    
+    for v in boardgraph.vertices:
+        if v.val in ["X","O","-"]:
+            c = True
+        else:
+            c = False
+            break
+    
+    if c:
+       
+        show_big_winner("-")
+        return True
     return False
 
 def sb_checkwinner(f_index):
@@ -136,11 +157,22 @@ def sb_checkwinner(f_index):
             w_val = boardgraph.vertices[w-1].val
 
             if u_val != "" and u_val == v_val == w_val:
-                print("winner")
                 big_boardgraph.updatevalue(f_index-1,v_val)
                 add_label(v_val,f_index)
                 return True  
             
+    for v in boardgraph.vertices:
+        if v.val in ["X","O"]:
+            c = True
+        else:
+            c = False
+            break
+    
+    if c:
+        big_boardgraph.updatevalue(f_index-1,"-")
+        add_label("-",f_index)
+        return True
+
     return False
 
 
@@ -156,14 +188,16 @@ def display_values():
                 text=graph_list[board_index].vertices[cell_index].val
             )
 
-
-
 def enable_button_all(f_index):
-        for i in buttons:
-         for j in i:
-            j.config(state="normal")
-        for i in  buttons[f_index]:
-            i.config(state="disabled")
+    for bi in range(9):
+        for ci in range(9):
+            if graph_list[bi].vertices[ci].val == "":
+                buttons[bi][ci].config(state="normal")
+            else:
+                buttons[bi][ci].config(state="disabled")
+    for i in range(9):
+        buttons[f_index][i].config(state="disabled")
+
 
 def disable_button():
     global buttons
@@ -180,7 +214,6 @@ def cpu_move(b_index):
         b=[]
         for i in range(9):
                 if big_boardgraph.vertices[i].val  not in ["X","O"]:
-                    print(i)
                     b.append(i)
         playframe = graph_list[random.choice(b)] 
         f=random.choice(b)
@@ -227,28 +260,29 @@ def cpu_move(b_index):
     for i in [0,2,6,8]:
         if playframe.vertices[i].val not in ["X","O"]:
             vl.append(i)
-    if vl is not None:
+
+    if vl != []:
         vp=random.choice(vl)
         playframe.updatevalue(vp, "O")
         return vp,f
-
-    # Default
-    empty_positions = [
-        i for i, v in enumerate(playframe.vertices)
-        if v.val not in ("X", "O")
-    ]
-    if empty_positions:
-        choice = random.choice(empty_positions)
-        playframe.updatevalue(choice, "O")
-        return choice,f
-    
+    else:
+        # Default
+        empty_positions = [
+            i for i, v in enumerate(playframe.vertices)
+            if v.val not in ("X", "O")
+        ]
+        if empty_positions:
+            choice = random.choice(empty_positions)
+            playframe.updatevalue(choice, "O")
+            return choice,f    
     return None
 
-
 def enable_button(f_index):
-        for i in  buttons[f_index]:
-            i.config(state="normal")
-       
+    for i in range(9):
+        if graph_list[f_index].vertices[i].val == "":
+            buttons[f_index][i].config(state="normal")
+        else:
+            buttons[f_index][i].config(state="disabled")
 
 
 def displaymove(a,v,f):
@@ -260,10 +294,10 @@ def displaymove(a,v,f):
         l.place(x=180, y=620)
 
 def cpu_turn(b_index):
-    # CPU makes its move
+    sb_checkwinner(b_index)
+    bb_checkwinner()
     a,f = cpu_move(b_index)
-
-    # Update UI after CPU move
+    sb_checkwinner(f)
     sb_checkwinner(b_index)
     display_values()
     
@@ -271,37 +305,32 @@ def cpu_turn(b_index):
         b=[]
         for i in range(9):
                 if big_boardgraph.vertices[i].val  not in ["X","O"]:
-                    print("player:",i)
                     b.append(i)
         for j in b:
              enable_button(j)
         displaymove(a,"notallowed",f)
-    # Enable next allowed board
+
     else:
         displaymove(a,"allowed",f)
         enable_button(a)
 
-    # Check big board winner after CPU move
     bb_checkwinner()
 
 
 def clicked(f_index, b_index):
-    # Disable everything immediately
+    sb_checkwinner(f_index)
+
     disable_button()
 
-    # Player move
     add_value(f_index, b_index, "X")
     display_values()
 
-    # Check small board win
     sb_checkwinner(f_index)
 
-    # Check big board win after player move
     if bb_checkwinner():
         return
 
-    # Delay then move
-    w.after(700, lambda: cpu_turn(b_index))
+    w.after(1000, lambda: cpu_turn(b_index))
 
     
 def reset_game():
