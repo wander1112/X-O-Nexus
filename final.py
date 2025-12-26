@@ -42,19 +42,6 @@ def createList():
 graph_list = [createList() for _ in range(9)]
 big_boardgraph = createList()
 
-WINNING_LINES = [
-    [1,2,3],[4,5,6],[7,8,9],
-    [1,4,7],[2,5,8],[3,6,9],
-    [1,5,9],[3,5,7]
-]
-
-def dfs_check_line(boardgraph, line, index, symbol):
-    if index == 3:
-        return True
-    if boardgraph.vertices[line[index]-1].val != symbol:
-        return False
-    return dfs_check_line(boardgraph, line, index+1, symbol)
-
 def add_label(val, f_index):
     for widget in sf[f_index-1].winfo_children():
         if isinstance(widget, tk.Label):
@@ -72,6 +59,20 @@ def show_big_winner(winner):
     tk.Label(popup, text=msg, font=("Arial",14,"bold"), bg="#f7e7ce").pack(pady=20)
     tk.Button(popup, text="Play Again", font=("Arial",12,"bold"), bg="#0078FF", fg="white", relief="flat", command=lambda:(popup.destroy(),reset_game())).pack(pady=5)
     tk.Button(popup, text="Exit", font=("Arial",12,"bold"), bg="#FF4C4C", fg="white", relief="flat", command=w.destroy).pack(pady=5)
+
+
+WINNING_LINES = [
+    [1,2,3],[4,5,6],[7,8,9],
+    [1,4,7],[2,5,8],[3,6,9],
+    [1,5,9],[3,5,7]
+]
+
+def dfs_check_line(boardgraph, line, index, symbol):
+    if index == 3:
+        return True
+    if boardgraph.vertices[line[index]-1].val != symbol:
+        return False
+    return dfs_check_line(boardgraph, line, index+1, symbol)
 
 def big_board_check_winner():
     for symbol in ["X","O"]:
@@ -127,14 +128,6 @@ def displaymove(a, v, f):
         move_label.config(text=f"CPU played F{f+1} C{a+1}. Make a move in any unoccupied frame.")
     else: 
         move_label.config(text=f"CPU played F{f+1} C{a+1}. Your next move should be in F{a+1}.")
-def sort_list(arr):
-    n = len(arr)
-    for i in range(n):
-        for j in range(0, n - i - 1):
-            if arr[j] > arr[j + 1]:
-                temp = arr[j]
-                arr[j] = arr[j + 1]
-                arr[j + 1] = temp
 
 def cpu_move(b_index):
     playframe = graph_list[b_index-1]
@@ -225,7 +218,7 @@ def cpu_move(b_index):
     for i in [0, 2, 6, 8]:
         if playframe.vertices[i].val == "":
             corners.append(i)
-    sort_list(corners) 
+
     if len(corners) > 0:
         c = random.choice(corners)
         playframe.updatevalue(c, "O")
@@ -236,7 +229,7 @@ def cpu_move(b_index):
     for i in range(9):
         if playframe.vertices[i].val == "":
             empty.append(i)
-    sort_list(empty) 
+    
     if len(empty) > 0:
         c = random.choice(empty)
         playframe.updatevalue(c, "O")
@@ -328,7 +321,7 @@ tk.Label(w, bg="#4e0707").place(x=238, y=594, width=553, height=5)
 
 # Move label
 move_label=tk.Label(f_bg, text="You start! Make your move anywhere.", font=("Arial",16,"bold"), bg="#f7e7ce")
-move_label.place(x=180,y=620)
+move_label.place(x=0,y=620,width=1024)
 
 # Reset button
 tk.Button(w, text="RESET", font=("Arial",14,"bold"), relief="groove", command=reset_game).place(x=462,y=665)
