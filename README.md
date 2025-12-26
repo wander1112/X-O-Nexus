@@ -1,5 +1,5 @@
 """
-# Super Tic Tac Toe – DAA Project   
+# X-0 – DAA Project   
 ### Collaborators:  
 - **Karthikeya**
 - **Mouliiswar**  
@@ -22,7 +22,6 @@ The game consists of:
 
 ## 🎯 Features  
 - Complete 3×3 Mega Board System  
-- Player vs Player gameplay  
 - Automatic move validation  
 - Win detection for mini boards and main board  
 - Clean, modular, and optimized code  
@@ -34,4 +33,3 @@ The game consists of:
 ## 🔧 Technologies Used  
 - **Python**  
 - **Git & GitHub** (Collaboration)  
-- **Al**
