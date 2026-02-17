@@ -265,6 +265,44 @@ def displaymove(a, v, f):
             text=f"CPU played F{f+1} C{a+1}. Your next move should be in F{a+1}."
         )
 
+def evaluate_move(boardgraph, idx):
+
+    score = 0
+
+    boardgraph.vertices[idx].val = "O"
+
+    for line in WINNING_LINES:
+        vals = [boardgraph.vertices[i - 1].val for i in line]
+        if vals.count("O") == BOARD_SIZE:
+            score += 3
+
+  
+    for line in WINNING_LINES:
+        vals = [boardgraph.vertices[i - 1].val for i in line]
+        if vals.count("X") == BOARD_SIZE - 1 and vals.count("O") == 1:
+            score += 2
+
+    next_board = idx
+
+  
+    if big_boardgraph.vertices[next_board].val in ["X", "O", "-"]:
+        score += 2
+    else:
+        next_boardgraph = graph_list[next_board]
+        danger = 0
+
+        for line in WINNING_LINES:
+            vals = [next_boardgraph.vertices[i - 1].val for i in line]
+            if vals.count("X") == BOARD_SIZE - 1 and vals.count("") == 1:
+                danger += 1
+
+        if danger == 0:
+            score += 1
+
+    boardgraph.vertices[idx].val = ""
+
+    return score
+
 def cpu_move(b_index):
     f = b_index - 1
     board = graph_list[f]
