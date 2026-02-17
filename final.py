@@ -1,15 +1,20 @@
 import tkinter as tk
 import random
 
+BOARD_SIZE = 3 
+
+
 class Vertex:
     def __init__(self, val):
         self.val = val
 
+
 class Edge:
     def __init__(self, origin, dest, val):
-        self.val = val
         self.origin = origin
         self.dest = dest
+        self.val = val
+
 
 class Graph:
     def __init__(self):
@@ -25,305 +30,415 @@ class Graph:
     def updatevalue(self, idx, value):
         self.vertices[idx].val = value
 
-def createList():
-    g = Graph()
-    for _ in range(9):
-        g.addVertex("")
-    edges = [
-        (1,2,1),(2,3,1),(3,6,2),(6,9,2),
-        (7,8,3),(8,9,3),(1,4,4),(4,7,4),
-        (1,5,8),(5,9,8),(2,5,7),(5,8,7),
-        (3,5,6),(5,7,6),(4,5,5),(5,6,5)
-    ]
-    for u, v, w in edges:
-        g.addEdge(u, v, w)
-    return g
 
-graph_list = [createList() for _ in range(9)]
-big_boardgraph = createList()
+def createList(N):
+    g = Graph()
+
+    for _ in range(N * N):
+        g.addVertex("")
+
+    winning_lines = []
+
+    # rows
+    for r in range(N):
+        winning_lines.append([r * N + c + 1 for c in range(N)])
+
+    # columns
+    for c in range(N):
+        winning_lines.append([r * N + c + 1 for r in range(N)])
+
+    # diagonals
+    winning_lines.append([i * N + i + 1 for i in range(N)])
+    winning_lines.append([(i + 1) * N - i for i in range(N)])
+
+    for line in winning_lines:
+        for i in range(len(line) - 1):
+            g.addEdge(line[i], line[i + 1], 1)
+
+    return g, winning_lines
+
+graph_list = []
+WINNING_LINES = []
+
+for _ in range(9):
+    g, WINNING_LINES = createList(BOARD_SIZE)
+    graph_list.append(g)
+
+big_boardgraph, _ = createList(BOARD_SIZE)
+
+
+
+def dfs_check_line(boardgraph, line, index, symbol):
+    if index == len(line):
+        return True
+    if boardgraph.vertices[line[index] - 1].val != symbol:
+        return False
+    return dfs_check_line(boardgraph, line, index + 1, symbol)
+
+
+
+def dac_check_line(boardgraph, line, symbol):
+    def helper(start, end):
+        if start == end:
+            return boardgraph.vertices[line[start] - 1].val == symbol
+
+        mid = (start + end) // 2
+
+        return (
+            helper(start, mid) and
+            helper(mid + 1, end)
+        )
+
+    return helper(0, len(line) - 1)
+
+
+def sb_checkwinner(f_index):
+    boardgraph = graph_list[f_index - 1]
+
+    if big_boardgraph.vertices[f_index - 1].val in ["X", "O", "-"]:
+        return True
+
+    for symbol in ["X", "O"]:
+        for line in WINNING_LINES:
+            if dac_check_line(boardgraph, line, symbol):
+                big_boardgraph.updatevalue(f_index - 1, symbol)
+                add_label(symbol, f_index)
+                return True
+
+    if all(v.val in ["X", "O"] for v in boardgraph.vertices):
+        big_boardgraph.updatevalue(f_index - 1, "-")
+        add_label("-", f_index)
+        return True
+
+    return False
+
+
+def big_board_check_winner():
+    for symbol in ["X", "O"]:
+        for line in WINNING_LINES:
+            if dac_check_line(big_boardgraph, line, symbol):
+                show_big_winner(symbol)
+                return True
+
+    if all(v.val in ["X", "O", "-"] for v in big_boardgraph.vertices):
+        show_big_winner("-")
+        return True
+
+    return False
 
 def add_label(val, f_index):
-    for widget in sf[f_index-1].winfo_children():
+    for widget in sf[f_index - 1].winfo_children():
         if isinstance(widget, tk.Label):
             widget.destroy()
-    tk.Label(sf[f_index-1], text=val, font=("Arial",38,"bold"), bg="#f7e7ce").place(x=0,y=0,height=160,width=180)
+
+    tk.Label(
+        sf[f_index - 1],
+        text=val,
+        font=("Arial", 38, "bold"),
+        bg="#FAB95B",  # Changed: start with highlight color
+        fg="white"
+    ).place(x=0, y=0, height=160, width=180)
+
 
 def show_big_winner(winner):
     disable_button()
+
     popup = tk.Toplevel(w)
     popup.title("Game Over")
     popup.geometry("300x160")
     popup.resizable(False, False)
-    popup.config(bg="#f7e7ce")
-    msg = f"Player {winner} won the big board!" if winner in ["X","O"] else "It's a Draw!"
-    tk.Label(popup, text=msg, font=("Arial",14,"bold"), bg="#f7e7ce").pack(pady=20)
-    tk.Button(popup, text="Play Again", font=("Arial",12,"bold"), bg="#0078FF", fg="white", relief="flat", command=lambda:(popup.destroy(),reset_game())).pack(pady=5)
-    tk.Button(popup, text="Exit", font=("Arial",12,"bold"), bg="#FF4C4C", fg="white", relief="flat", command=w.destroy).pack(pady=5)
+    popup.config(bg="#547792")
 
+    if winner in ["X", "O"]:
+        tk.Label(
+            popup,
+            text=f"Player {winner} won the big board!",
+            font=("Arial", 14, "bold"),
+            bg="#547792"
+        ).pack(pady=20)
+    else:
+        tk.Label(
+            popup,
+            text=f"It's a Draw!",
+            font=("Arial", 14, "bold"),
+            bg="#547792"
+        ).pack(pady=20)
 
-WINNING_LINES = [
-    [1,2,3],[4,5,6],[7,8,9],
-    [1,4,7],[2,5,8],[3,6,9],
-    [1,5,9],[3,5,7]
-]
+    tk.Button(
+        popup,
+        text="Play Again",
+        font=("Arial", 12, "bold"),
+        bg="#0078FF",
+        fg="white",
+        relief="flat",
+        command=lambda: (popup.destroy(), reset_game())
+    ).pack(pady=5)
 
-def dfs_check_line(boardgraph, line, index, symbol):
-    if index == 3:
-        return True
-    if boardgraph.vertices[line[index]-1].val != symbol:
-        return False
-    return dfs_check_line(boardgraph, line, index+1, symbol)
+    tk.Button(
+        popup,
+        text="Exit",
+        font=("Arial", 12, "bold"),
+        bg="#FF4C4C",
+        fg="white",
+        relief="flat",
+        command=w.destroy
+    ).pack(pady=5)
 
-def big_board_check_winner():
-    for symbol in ["X","O"]:
-        for line in WINNING_LINES:
-            if dfs_check_line(big_boardgraph, line, 0, symbol):
-                show_big_winner(symbol)
-                return True
-    if all(v.val in ["X","O","-"] for v in big_boardgraph.vertices):
-        show_big_winner("-")
-        return True
-    return False
-
-def sb_checkwinner(f_index):
-    boardgraph = graph_list[f_index-1]
-    if big_boardgraph.vertices[f_index-1].val in ["X","O","-"]:
-        return True
-    for symbol in ["X","O"]:
-        for line in WINNING_LINES:
-            if dfs_check_line(boardgraph, line, 0, symbol):
-                big_boardgraph.updatevalue(f_index-1, symbol)
-                add_label(symbol, f_index)
-                return True
-    if all(v.val in ["X","O"] for v in boardgraph.vertices):
-        big_boardgraph.updatevalue(f_index-1, "-")
-        add_label("-", f_index)
-        return True
-    return False
-
-def add_value(f_index, b_index, value):
-    graph_list[f_index-1].updatevalue(b_index-1, value)
-
-def display_values():
-    for i in range(9):
-        for j in range(9):
-            buttons[i][j].config(text=graph_list[i].vertices[j].val)
 
 def disable_button():
     for row in buttons:
         for btn in row:
             btn.config(state="disabled")
 
-def enable_button(f_index):
-    for i in range(9):
-        buttons[f_index][i].config(state="normal" if graph_list[f_index].vertices[i].val=="" else "disabled")
+def enable_button(board_index):
+    for i in range(BOARD_SIZE * BOARD_SIZE):
+        if graph_list[board_index].vertices[i].val == "":
+            buttons[board_index][i].config(state="normal")
+        else:
+            buttons[board_index][i].config(state="disabled")
+
+
+def reset_frame_colors():
+    # Reset all frames and their contents to default (white/dark blue)
+    for i, frame in enumerate(sf):
+        frame.config(bg="white", bd=2, relief="ridge")
+        
+        # Reset buttons to default color
+        for btn in buttons[i]:
+            btn.config(bg="SystemButtonFace")
+        
+        # Reset any labels back to dark blue
+        for widget in frame.winfo_children():
+            if isinstance(widget, tk.Label):
+                widget.config(bg="#547792")
+
+
+
+def highlight_frame(board_index):
+    reset_frame_colors()
+    sf[board_index].config(bg="#FAB95B", bd=4, relief="solid")
+    
+    # Highlight the buttons in this frame
+    for btn in buttons[board_index]:
+        btn.config(bg="#FAB95B")
+    
+    # Also update any labels covering the frame (from won boards)
+    for widget in sf[board_index].winfo_children():
+        if isinstance(widget, tk.Label):
+            widget.config(bg="#FAB95B")
+
 
 def enable_all_valid_boards():
+    reset_frame_colors()
+
     for i in range(9):
-        if big_boardgraph.vertices[i].val=="":
+        if big_boardgraph.vertices[i].val == "":
+            sf[i].config(bg="#FAB95B", bd=4, relief="solid")
+            
+            # Highlight buttons in this frame
+            for btn in buttons[i]:
+                btn.config(bg="#FAB95B")
+            
+            # Also update any labels on this frame
+            for widget in sf[i].winfo_children():
+                if isinstance(widget, tk.Label):
+                    widget.config(bg="#FAB95B")
+            
             enable_button(i)
+
+
+def display_values():
+    for bi in range(9):
+        for ci in range(BOARD_SIZE * BOARD_SIZE):
+            buttons[bi][ci].config(
+                text=graph_list[bi].vertices[ci].val
+            )
+
 
 def displaymove(a, v, f):
     if v == "notallowed":
-        move_label.config(text=f"CPU played F{f+1} C{a+1}. Make a move in any unoccupied frame.")
-    else: 
-        move_label.config(text=f"CPU played F{f+1} C{a+1}. Your next move should be in F{a+1}.")
+        move_label.config(
+            text=f"CPU played F{f+1} C{a+1}. Make a move in any unoccupied frame."
+        )
+    else:
+        move_label.config(
+            text=f"CPU played F{f+1} C{a+1}. Your next move should be in F{a+1}."
+        )
 
 def cpu_move(b_index):
-    playframe = graph_list[b_index-1]
     f = b_index - 1
+    board = graph_list[f]
 
-    # if target board already won or draw
-    if big_boardgraph.vertices[f].val == "X" or big_boardgraph.vertices[f].val == "O" or big_boardgraph.vertices[f].val == "-":
-
-        valid = []
-        for i in range(9):
-            if big_boardgraph.vertices[i].val == "":
-                for v in graph_list[i].vertices:
-                    if v.val == "":
-                        valid.append(i)
-                        break
-
-        if len(valid) == 0:
+    if big_boardgraph.vertices[f].val in ["X", "O", "-"]:
+        valid = [i for i in range(9)
+                 if big_boardgraph.vertices[i].val == ""
+                 and any(v.val == "" for v in graph_list[i].vertices)]
+        if not valid:
             return None
-
         f = random.choice(valid)
-        playframe = graph_list[f]
+        board = graph_list[f]
 
-    # First pass: block player X
-    for e1 in playframe.edgeList:
-        for e2 in playframe.edgeList:
-            if e1.val == e2.val and e1.dest == e2.origin:
-                u = e1.origin - 1
-                v = e1.dest - 1
-                w = e2.dest - 1
+    for line in WINNING_LINES:
+        vals = [board.vertices[i - 1].val for i in line]
+        if vals.count("O") == BOARD_SIZE - 1 and vals.count("") == 1:
+            idx = line[vals.index("")] - 1
+            board.updatevalue(idx, "O")
+            return idx, f
 
-                x_count = 0
-                empty_index = -1
+    for line in WINNING_LINES:
+        vals = [board.vertices[i - 1].val for i in line]
+        if vals.count("X") == BOARD_SIZE - 1 and vals.count("") == 1:
+            idx = line[vals.index("")] - 1
+            board.updatevalue(idx, "O")
+            return idx, f
 
-                if playframe.vertices[u].val == "X":
-                    x_count += 1
-                if playframe.vertices[v].val == "X":
-                    x_count += 1
-                if playframe.vertices[w].val == "X":
-                    x_count += 1
+    center_idx = (BOARD_SIZE * BOARD_SIZE) // 2
+    if board.vertices[center_idx].val == "":
+        board.updatevalue(center_idx, "O")
+        return center_idx, f
 
-                if playframe.vertices[u].val == "":
-                    empty_index = u
-                if playframe.vertices[v].val == "":
-                    empty_index = v
-                if playframe.vertices[w].val == "":
-                    empty_index = w
+    if BOARD_SIZE == 3:
+        corners = [i for i in [0, 2, 6, 8] if board.vertices[i].val == ""]
+        if corners:
+            idx = random.choice(corners)
+            board.updatevalue(idx, "O")
+            return idx, f
 
-                if x_count == 2 and empty_index != -1:
-                    playframe.updatevalue(empty_index, "O")
-                    return empty_index, f
-
-    # Second pass: try to win with O
-    for e1 in playframe.edgeList:
-        for e2 in playframe.edgeList:
-            if e1.val == e2.val and e1.dest == e2.origin:
-                u = e1.origin - 1
-                v = e1.dest - 1
-                w = e2.dest - 1
-
-                o_count = 0
-                empty_index = -1
-
-                if playframe.vertices[u].val == "O":
-                    o_count += 1
-                if playframe.vertices[v].val == "O":
-                    o_count += 1
-                if playframe.vertices[w].val == "O":
-                    o_count += 1
-
-                if playframe.vertices[u].val == "":
-                    empty_index = u
-                if playframe.vertices[v].val == "":
-                    empty_index = v
-                if playframe.vertices[w].val == "":
-                    empty_index = w
-
-                if o_count == 2 and empty_index != -1:
-                    playframe.updatevalue(empty_index, "O")
-                    return empty_index, f
-
-    # take center
-    if playframe.vertices[4].val == "":
-        playframe.updatevalue(4, "O")
-        return 4, f
-
-    # take corner
-    corners = []
-    for i in [0, 2, 6, 8]:
-        if playframe.vertices[i].val == "":
-            corners.append(i)
-
-    if len(corners) > 0:
-        c = random.choice(corners)
-        playframe.updatevalue(c, "O")
-        return c, f
-
-    # take any empty cell
-    empty = []
-    for i in range(9):
-        if playframe.vertices[i].val == "":
-            empty.append(i)
-    
-    if len(empty) > 0:
-        c = random.choice(empty)
-        playframe.updatevalue(c, "O")
-        return c, f
+    empty = [i for i, v in enumerate(board.vertices) if v.val == ""]
+    if empty:
+        idx = random.choice(empty)
+        board.updatevalue(idx, "O")
+        return idx, f
 
     return None
 
 
 def cpu_turn(b_index):
-    result=cpu_move(b_index)
-    if not result:
+    move = cpu_move(b_index)
+    if not move:
         big_board_check_winner()
         return
-    a,f=result
-    display_values()
-    sb_checkwinner(f+1)
-    if big_board_check_winner():
-        return
-    if big_boardgraph.vertices[a].val in ["X","O","-"]:
-        enable_all_valid_boards()
-        displaymove(a, "notallowed", f)
-    else:
-        enable_button(a)
-        displaymove(a, "allowed", f)
 
-def clicked(f_index,b_index):
-    if graph_list[f_index-1].vertices[b_index-1].val!="":
-        return
-    if big_boardgraph.vertices[f_index-1].val in ["X","O","-"]:
-        return
-    disable_button()
-    add_value(f_index,b_index,"X")
+    cell, frame = move
     display_values()
-    sb_checkwinner(f_index)
+    sb_checkwinner(frame + 1)
+
     if big_board_check_winner():
         return
-    w.after(1000,lambda:cpu_turn(b_index))
+
+    if big_boardgraph.vertices[cell].val in ["X", "O", "-"]:
+        enable_all_valid_boards()
+        displaymove(cell, "notallowed", frame)
+    else:
+        highlight_frame(cell)
+        enable_button(cell)
+        displaymove(cell, "allowed", frame)
+
+
+def clicked(f_index, b_index):
+    if graph_list[f_index - 1].vertices[b_index - 1].val != "":
+        return
+
+    if big_boardgraph.vertices[f_index - 1].val in ["X", "O", "-"]:
+        return
+
+    disable_button()
+    graph_list[f_index - 1].updatevalue(b_index - 1, "X")
+    display_values()
+
+    sb_checkwinner(f_index)
+
+    if big_board_check_winner():
+        return
+
+    w.after(1000, lambda: cpu_turn(b_index))
 
 def reset_game():
-    global graph_list,big_boardgraph
-    graph_list=[createList() for _ in range(9)]
-    big_boardgraph=createList()
-    for r in buttons:
-        for b in r:
-            b.config(text="",state="normal")
-    for f in sf:
-        for wdg in f.winfo_children():
-            if isinstance(wdg,tk.Label):
-                wdg.destroy()
+    global graph_list, big_boardgraph
+
+    graph_list = []
+    for _ in range(9):
+        g, _ = createList(BOARD_SIZE)
+        graph_list.append(g)
+
+    big_boardgraph, _ = createList(BOARD_SIZE)
+
+    for row in buttons:
+        for btn in row:
+            btn.config(text="", state="normal")
+
+    for frame in sf:
+        for widget in frame.winfo_children():
+            if isinstance(widget, tk.Label):
+                widget.destroy()
+
+    enable_all_valid_boards()
     move_label.config(text="You start! Make your move anywhere.")
 
-# UI Setup
-w=tk.Tk()
+w = tk.Tk()
 w.geometry("1024x720")
 w.title("X-O Nexus")
-w.resizable(False,False)
+w.resizable(False, False)
 
-# Background frame
-f_bg = tk.Frame(w, bd=2, relief="ridge", bg="#f7e7ce")
+f_bg = tk.Frame(w, bd=2, relief="ridge", bg="#547792")
 f_bg.place(x=0, y=0, height=720, width=1024)
 
-# Title label
-l1 = tk.Label(w, text="X-O Nexus", font=("Arial", 24, "bold"), bg="#f7e7ce")
+l1 = tk.Label(w, text="X-O Nexus", font=("Arial", 24, "bold"), bg="#547792",fg="#E1EBEE")
 l1.place(x=437, y=40)
 
-# Create 9 small boards
-sf=[]
-buttons=[]
+sf = []
+buttons = []
+
+base_x = 238
+base_y = 110
+
 for i in range(9):
-    f=tk.Frame(f_bg,bg="white",bd=2,relief="ridge")
-    f.place(x=238+(i%3)*183,y=110+(i//3)*162,width=180,height=160)
-    sf.append(f)
-    row=[]
-    for j in range(9):
-        btn=tk.Button(f,font=("Arial",12,"bold"),width=5,height=2,command=lambda fi=i+1,bi=j+1:clicked(fi,bi))
-        btn.place(x=(j%3)*60,y=(j//3)*52)
-        row.append(btn)
-    buttons.append(row)
+    frame = tk.Frame(f_bg, bd=2, relief="ridge", bg="white")
+    frame.place(
+        x=base_x + (i % 3) * 183,
+        y=base_y + (i // 3) * 162,
+        width=180,
+        height=160
+    )
+    sf.append(frame)
 
-# Board separators (dark red lines)
-tk.Label(w, bg="#4e0707").place(x=420, y=112, width=5, height=482)
-tk.Label(w, bg="#4e0707").place(x=603, y=112, width=5, height=482)
-tk.Label(w, bg="#4e0707").place(x=238, y=270, width=550, height=5)
-tk.Label(w, bg="#4e0707").place(x=238, y=432, width=549, height=5)
-tk.Label(w, bg="#4e0707").place(x=238, y=112, width=5, height=482)
-tk.Label(w, bg="#4e0707").place(x=787, y=112, width=5, height=486)
-tk.Label(w, bg="#4e0707").place(x=238, y=112, width=550, height=5)
-tk.Label(w, bg="#4e0707").place(x=238, y=594, width=553, height=5)
+    btns = []
+    for r in range(BOARD_SIZE):
+        for c in range(BOARD_SIZE):
+            idx = r * BOARD_SIZE + c + 1
+            btn = tk.Button(
+                frame,
+                width=5,
+                height=2,
+                font=("Arial", 12, "bold"),
+                command=lambda f=i + 1, b=idx: clicked(f, b)
+            )
+            btn.place(x=c * 60, y=r * 52)
+            btns.append(btn)
 
-# Move label
-move_label=tk.Label(f_bg, text="You start! Make your move anywhere.", font=("Arial",16,"bold"), bg="#f7e7ce")
-move_label.place(x=0,y=620,width=1024)
+    buttons.append(btns)
 
-# Reset button
-tk.Button(w, text="RESET", font=("Arial",14,"bold"), relief="groove", command=reset_game).place(x=462,y=665)
+tk.Label(w, bg="#003153").place(x=420, y=112, width=5, height=482)
+tk.Label(w, bg="#003153").place(x=603, y=112, width=5, height=482)
+tk.Label(w, bg="#003153").place(x=238, y=270, width=550, height=5)
+tk.Label(w, bg="#003153").place(x=238, y=432, width=549, height=5)
+tk.Label(w, bg="#003153").place(x=238, y=112, width=5, height=482)
+tk.Label(w, bg="#003153").place(x=787, y=112, width=5, height=486)
+tk.Label(w, bg="#003153").place(x=238, y=112, width=550, height=5)
+tk.Label(w, bg="#003153").place(x=238, y=594, width=553, height=5)
+
+tk.Button(
+    w, text="RESET", font=("Arial", 14, "bold"),
+    relief="groove", command=reset_game
+).place(x=462, y=665)
+
+move_label = tk.Label(
+    f_bg, text="You start! Make your move anywhere.",
+    font=("Arial", 16, "bold"), bg="#547792",fg="#E1EBEE"
+)
+move_label.place(x=180, y=620)
+
+# Highlight all frames at game start
+enable_all_valid_boards()
 
 w.mainloop()
