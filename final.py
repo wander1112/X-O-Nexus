@@ -304,52 +304,32 @@ def evaluate_move(boardgraph, idx):
     return score
 
 def cpu_move(b_index):
-    f = b_index - 1
-    board = graph_list[f]
+    best_score = -1
+    best_move = None
+    frames = []
 
-    if big_boardgraph.vertices[f].val in ["X", "O", "-"]:
-        valid = [i for i in range(9)
-                 if big_boardgraph.vertices[i].val == ""
-                 and any(v.val == "" for v in graph_list[i].vertices)]
-        if not valid:
-            return None
-        f = random.choice(valid)
-        board = graph_list[f]
+    if big_boardgraph.vertices[b_index - 1].val in ["X", "O", "-"]:
+        for i in range(9):
+            if big_boardgraph.vertices[i].val == "":
+                frames.append(i)
+    else:
+        frames.append(b_index - 1)
 
-    for line in WINNING_LINES:
-        vals = [board.vertices[i - 1].val for i in line]
-        if vals.count("O") == BOARD_SIZE - 1 and vals.count("") == 1:
-            idx = line[vals.index("")] - 1
-            board.updatevalue(idx, "O")
-            return idx, f
+    for f in frames:
+        boardgraph = graph_list[f]
+        for i in range(BOARD_SIZE * BOARD_SIZE):
+            if boardgraph.vertices[i].val == "":
+                score = evaluate_move(boardgraph, i)
+                if score > best_score:
+                    best_score = score
+                    best_move = (i, f)
 
-    for line in WINNING_LINES:
-        vals = [board.vertices[i - 1].val for i in line]
-        if vals.count("X") == BOARD_SIZE - 1 and vals.count("") == 1:
-            idx = line[vals.index("")] - 1
-            board.updatevalue(idx, "O")
-            return idx, f
-
-    center_idx = (BOARD_SIZE * BOARD_SIZE) // 2
-    if board.vertices[center_idx].val == "":
-        board.updatevalue(center_idx, "O")
-        return center_idx, f
-
-    if BOARD_SIZE == 3:
-        corners = [i for i in [0, 2, 6, 8] if board.vertices[i].val == ""]
-        if corners:
-            idx = random.choice(corners)
-            board.updatevalue(idx, "O")
-            return idx, f
-
-    empty = [i for i, v in enumerate(board.vertices) if v.val == ""]
-    if empty:
-        idx = random.choice(empty)
-        board.updatevalue(idx, "O")
-        return idx, f
+    if best_move:
+        idx, frame = best_move
+        graph_list[frame].updatevalue(idx, "O")
+        return idx, frame
 
     return None
-
 
 def cpu_turn(b_index):
     move = cpu_move(b_index)
