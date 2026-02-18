@@ -65,11 +65,46 @@ for _ in range(9):
     graph_list.append(g)
 
 big_boardgraph, _ = createList(BOARD_SIZE)
+
+# Timer globals
 TURN_TIME_LIMIT = 21
 timer_running = False
 time_remaining = TURN_TIME_LIMIT
 timer_job = None
-current_player_frame = None 
+current_player_frame = None
+
+
+def merge_sort_moves(arr):
+    if len(arr) <= 1:
+        return arr
+
+    mid = len(arr) // 2
+    left = merge_sort_moves(arr[:mid])
+    right = merge_sort_moves(arr[mid:])
+
+    return merge(left, right)
+
+
+def merge(left, right):
+    result = []
+    i = j = 0
+
+    # Descending order (highest score first)
+    while i < len(left) and j < len(right):
+        if left[i][0] >= right[j][0]:  
+            result.append(left[i])
+            i += 1
+        else:
+            result.append(right[j])
+            j += 1
+
+    # Remaining elements
+    result.extend(left[i:])
+    result.extend(right[j:])
+
+    return result
+
+
 def dfs_check_line(boardgraph, line, index, symbol):
     if index == len(line):
         return True
@@ -137,7 +172,7 @@ def add_label(val, f_index):
 
 
 def show_big_winner(winner):
-    stop_timer() 
+    stop_timer()
     disable_button()
 
     popup = tk.Toplevel(w)
@@ -250,6 +285,11 @@ def displaymove(a, v, f):
             text=f"CPU played F{f+1} C{a+1}. Your next move should be in F{a+1}."
         )
 
+
+# ══════════════════════════════════════════════════════════════════════════════
+# TIMER FUNCTIONS
+# ══════════════════════════════════════════════════════════════════════════════
+
 def update_timer():
     """Update the timer display every second."""
     global time_remaining, timer_running, timer_job
@@ -296,7 +336,8 @@ def stop_timer():
     if timer_job:
         w.after_cancel(timer_job)
         timer_job = None
- 
+
+
 def time_up_forfeit():
     """Handle what happens when player runs out of time."""
     global current_player_frame
@@ -320,6 +361,9 @@ def time_up_forfeit():
     
     # CPU makes its move in the target frame
     w.after(1500, lambda: cpu_turn(target_frame))
+
+
+# ══════════════════════════════════════════════════════════════════════════════
 
 
 def evaluate_move(boardgraph, idx):
@@ -356,8 +400,7 @@ def evaluate_move(boardgraph, idx):
 
 
 def cpu_move(b_index):
-    best_score = -1
-    best_move = None
+    moves = []
     frames = []
 
     if big_boardgraph.vertices[b_index - 1].val in ["X", "O", "-"]:
@@ -367,24 +410,28 @@ def cpu_move(b_index):
     else:
         frames.append(b_index - 1)
 
+    # Collect moves with scores
     for f in frames:
         boardgraph = graph_list[f]
         for i in range(BOARD_SIZE * BOARD_SIZE):
             if boardgraph.vertices[i].val == "":
                 score = evaluate_move(boardgraph, i)
-                if score > best_score:
-                    best_score = score
-                    best_move = (i, f)
+                moves.append((score, i, f))
 
-    if best_move:
-        idx, frame = best_move
+    # Sort moves using merge sort (descending order by score)
+    moves = merge_sort_moves(moves)
+
+    if moves:
+        _, idx, frame = moves[0]
         graph_list[frame].updatevalue(idx, "O")
         return idx, frame
 
     return None
+
+
 def cpu_turn(b_index):
     stop_timer()
-    global extra_turn,current_player_frame
+    global current_player_frame
 
     move = cpu_move(b_index)
     if not move:
@@ -406,30 +453,23 @@ def cpu_turn(b_index):
     if big_boardgraph.vertices[cell].val in ["X", "O", "-"]:
         enable_all_valid_boards()
         displaymove(cell, "notallowed", frame)
-        current_player_frame = None
+        current_player_frame = None  # Player can play anywhere
     else:
+        highlight_frame(cell)
         enable_button(cell)
         displaymove(cell, "allowed", frame)
-    current_player_frame = cell + 1
-    if big_boardgraph.vertices[cell].val in ["X", "O", "-"]:
-        enable_all_valid_boards()
-        displaymove(cell, "notallowed", frame)
-    else:
-        enable_button(cell)
-        displaymove(cell, "allowed", frame)
-    current_player_frame = cell + 1
+        current_player_frame = cell + 1  # Player must play in this specific frame
     
-    start_timer() 
+    start_timer()
 
 
 def clicked(f_index, b_index):
-    global extra_turn
-
     if graph_list[f_index - 1].vertices[b_index - 1].val != "":
         return
 
     if big_boardgraph.vertices[f_index - 1].val in ["X", "O", "-"]:
         return
+
     stop_timer()
     disable_button()
     graph_list[f_index - 1].updatevalue(b_index - 1, "X")
@@ -440,6 +480,7 @@ def clicked(f_index, b_index):
     if big_board_check_winner():
         return
 
+    # Momentum Rule
     if won:
         enable_all_valid_boards()
         start_timer()
@@ -448,9 +489,9 @@ def clicked(f_index, b_index):
     w.after(1000, lambda: cpu_turn(b_index))
 
 
-
 def reset_game():
     global graph_list, big_boardgraph
+
     stop_timer()
 
     graph_list = []
@@ -534,11 +575,12 @@ tk.Button(
     relief="groove", command=reset_game
 ).place(x=462, y=665)
 
+# Timer display
 timer_label = tk.Label(
     f_bg, text=f"Time: {TURN_TIME_LIMIT}s",
     font=("Arial", 18, "bold"), bg="#547792", fg="#E1EBEE"
 )
-timer_label.place(x=50, y=80)    
+timer_label.place(x=50, y=80)
 
 move_label = tk.Label(
     f_bg, text="You start! Make your move anywhere.",
