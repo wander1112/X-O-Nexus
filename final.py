@@ -332,8 +332,7 @@ def evaluate_move(boardgraph, idx):
     return score
 
 def cpu_move(b_index):
-    best_score = -1
-    best_move = None
+    moves = []
     frames = []
 
     if big_boardgraph.vertices[b_index - 1].val in ["X", "O", "-"]:
@@ -343,17 +342,18 @@ def cpu_move(b_index):
     else:
         frames.append(b_index - 1)
 
+    # Collect moves
     for f in frames:
         boardgraph = graph_list[f]
         for i in range(BOARD_SIZE * BOARD_SIZE):
             if boardgraph.vertices[i].val == "":
                 score = evaluate_move(boardgraph, i)
-                if score > best_score:
-                    best_score = score
-                    best_move = (i, f)
+                moves.append((score, i, f))
 
-    if best_move:
-        idx, frame = best_move
+    moves = merge_sort_moves(moves)
+
+    if moves:
+        _, idx, frame = moves[0]
         graph_list[frame].updatevalue(idx, "O")
         return idx, frame
 
