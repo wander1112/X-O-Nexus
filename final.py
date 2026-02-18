@@ -65,37 +65,11 @@ for _ in range(9):
     graph_list.append(g)
 
 big_boardgraph, _ = createList(BOARD_SIZE)
-
-def merge_sort_moves(arr):
-    if len(arr) <= 1:
-        return arr
-
-    mid = len(arr) // 2
-    left = merge_sort_moves(arr[:mid])
-    right = merge_sort_moves(arr[mid:])
-
-    return merge(left, right)
-
-
-def merge(left, right):
-    result = []
-    i = j = 0
-
-    # Descending order (highest score first)
-    while i < len(left) and j < len(right):
-        if left[i][0] >= right[j][0]:  
-            result.append(left[i])
-            i += 1
-        else:
-            result.append(right[j])
-            j += 1
-
-    # Remaining elements
-    result.extend(left[i:])
-    result.extend(right[j:])
-
-    return result
-
+TURN_TIME_LIMIT = 21
+timer_running = False
+time_remaining = TURN_TIME_LIMIT
+timer_job = None
+current_player_frame = None 
 def dfs_check_line(boardgraph, line, index, symbol):
     if index == len(line):
         return True
@@ -104,19 +78,12 @@ def dfs_check_line(boardgraph, line, index, symbol):
     return dfs_check_line(boardgraph, line, index + 1, symbol)
 
 
-
 def dac_check_line(boardgraph, line, symbol):
     def helper(start, end):
         if start == end:
             return boardgraph.vertices[line[start] - 1].val == symbol
-
         mid = (start + end) // 2
-
-        return (
-            helper(start, mid) and
-            helper(mid + 1, end)
-        )
-
+        return helper(start, mid) and helper(mid + 1, end)
     return helper(0, len(line) - 1)
 
 
@@ -154,6 +121,7 @@ def big_board_check_winner():
 
     return False
 
+
 def add_label(val, f_index):
     for widget in sf[f_index - 1].winfo_children():
         if isinstance(widget, tk.Label):
@@ -163,12 +131,13 @@ def add_label(val, f_index):
         sf[f_index - 1],
         text=val,
         font=("Arial", 38, "bold"),
-        bg="#FAB95B",  # Changed: start with highlight color
+        bg="#547792",
         fg="white"
     ).place(x=0, y=0, height=160, width=180)
 
 
 def show_big_winner(winner):
+    stop_timer() 
     disable_button()
 
     popup = tk.Toplevel(w)
@@ -182,14 +151,16 @@ def show_big_winner(winner):
             popup,
             text=f"Player {winner} won the big board!",
             font=("Arial", 14, "bold"),
-            bg="#547792"
+            bg="#547792",
+            fg="white"
         ).pack(pady=20)
     else:
         tk.Label(
             popup,
-            text=f"It's a Draw!",
+            text="It's a Draw!",
             font=("Arial", 14, "bold"),
-            bg="#547792"
+            bg="#547792",
+            fg="white"
         ).pack(pady=20)
 
     tk.Button(
@@ -218,6 +189,7 @@ def disable_button():
         for btn in row:
             btn.config(state="disabled")
 
+
 def enable_button(board_index):
     for i in range(BOARD_SIZE * BOARD_SIZE):
         if graph_list[board_index].vertices[i].val == "":
@@ -226,61 +198,46 @@ def enable_button(board_index):
             buttons[board_index][i].config(state="disabled")
 
 
+def set_frame_highlight(board_index, highlighted):
+    """Apply or remove highlight colour from a frame, its buttons, and any overlay label."""
+    color     = "#FAB95B"        if highlighted else "white"
+    btn_color = "#FAB95B"        if highlighted else "SystemButtonFace"
+    lbl_bg    = "#FAB95B"        if highlighted else "#547792"
+    bd        = 4                if highlighted else 2
+    relief    = "solid"          if highlighted else "ridge"
+
+    sf[board_index].config(bg=color, bd=bd, relief=relief)
+
+    for btn in buttons[board_index]:
+        btn.config(bg=btn_color)
+
+    for widget in sf[board_index].winfo_children():
+        if isinstance(widget, tk.Label):
+            widget.config(bg=lbl_bg)
+
+
 def reset_frame_colors():
-    # Reset all frames and their contents to default (white/dark blue)
-    for i, frame in enumerate(sf):
-        frame.config(bg="white", bd=2, relief="ridge")
-
-        # Reset buttons to default color
-        for btn in buttons[i]:
-            btn.config(bg="SystemButtonFace")
-
-        # Reset any labels back to dark blue
-        for widget in frame.winfo_children():
-            if isinstance(widget, tk.Label):
-                widget.config(bg="#547792")
-
+    for i in range(9):
+        set_frame_highlight(i, False)
 
 
 def highlight_frame(board_index):
     reset_frame_colors()
-    sf[board_index].config(bg="#FAB95B", bd=4, relief="solid")
-
-    # Highlight the buttons in this frame
-    for btn in buttons[board_index]:
-        btn.config(bg="#FAB95B")
-
-    # Also update any labels covering the frame (from won boards)
-    for widget in sf[board_index].winfo_children():
-        if isinstance(widget, tk.Label):
-            widget.config(bg="#FAB95B")
+    set_frame_highlight(board_index, True)
 
 
 def enable_all_valid_boards():
     reset_frame_colors()
-
     for i in range(9):
         if big_boardgraph.vertices[i].val == "":
-            sf[i].config(bg="#FAB95B", bd=4, relief="solid")
-
-            # Highlight buttons in this frame
-            for btn in buttons[i]:
-                btn.config(bg="#FAB95B")
-
-            # Also update any labels on this frame
-            for widget in sf[i].winfo_children():
-                if isinstance(widget, tk.Label):
-                    widget.config(bg="#FAB95B")
-
+            set_frame_highlight(i, True)
             enable_button(i)
 
 
 def display_values():
     for bi in range(9):
         for ci in range(BOARD_SIZE * BOARD_SIZE):
-            buttons[bi][ci].config(
-                text=graph_list[bi].vertices[ci].val
-            )
+            buttons[bi][ci].config(text=graph_list[bi].vertices[ci].val)
 
 
 def displaymove(a, v, f):
@@ -293,8 +250,79 @@ def displaymove(a, v, f):
             text=f"CPU played F{f+1} C{a+1}. Your next move should be in F{a+1}."
         )
 
-def evaluate_move(boardgraph, idx):
+def update_timer():
+    """Update the timer display every second."""
+    global time_remaining, timer_running, timer_job
+    
+    if not timer_running:
+        return
+    
+    if time_remaining > 0:
+        time_remaining -= 1
+        
+        # Update timer display with color coding
+        if time_remaining <= 5:
+            timer_label.config(text=f"Time: {time_remaining}s", fg="#FF4C4C")  # Red
+        elif time_remaining <= 10:
+            timer_label.config(text=f"Time: {time_remaining}s", fg="#FFA500")  # Orange
+        else:
+            timer_label.config(text=f"Time: {time_remaining}s", fg="#E1EBEE")  # Normal
+        
+        # Schedule next update
+        timer_job = w.after(1000, update_timer)
+    else:
+        # Time's up! CPU wins the turn
+        timer_label.config(text="Time's up!", fg="#FF4C4C")
+        stop_timer()
+        time_up_forfeit()
 
+
+def start_timer():
+    """Start the turn timer for player."""
+    global time_remaining, timer_running, timer_job
+    
+    stop_timer()  # Stop any existing timer
+    time_remaining = TURN_TIME_LIMIT
+    timer_running = True
+    timer_label.config(text=f"Time: {time_remaining}s", fg="#E1EBEE")
+    update_timer()
+
+
+def stop_timer():
+    """Stop the timer."""
+    global timer_running, timer_job
+    
+    timer_running = False
+    if timer_job:
+        w.after_cancel(timer_job)
+        timer_job = None
+ 
+def time_up_forfeit():
+    """Handle what happens when player runs out of time."""
+    global current_player_frame
+    
+    disable_button()
+    move_label.config(text="Time's up! CPU gets a free move in your frame.")
+    
+    # CPU plays in the frame where the player should have played
+    if current_player_frame is not None:
+        # Player had a specific frame to play in
+        target_frame = current_player_frame
+    else:
+        # Player could play anywhere, pick a random valid board
+        valid_boards = [i for i in range(9) 
+                        if big_boardgraph.vertices[i].val == "" 
+                        and any(v.val == "" for v in graph_list[i].vertices)]
+        if valid_boards:
+            target_frame = random.choice(valid_boards) + 1
+        else:
+            return
+    
+    # CPU makes its move in the target frame
+    w.after(1500, lambda: cpu_turn(target_frame))
+
+
+def evaluate_move(boardgraph, idx):
     score = 0
 
     boardgraph.vertices[idx].val = "O"
@@ -304,7 +332,6 @@ def evaluate_move(boardgraph, idx):
         if vals.count("O") == BOARD_SIZE:
             score += 3
 
-
     for line in WINNING_LINES:
         vals = [boardgraph.vertices[i - 1].val for i in line]
         if vals.count("X") == BOARD_SIZE - 1 and vals.count("O") == 1:
@@ -312,27 +339,25 @@ def evaluate_move(boardgraph, idx):
 
     next_board = idx
 
-
     if big_boardgraph.vertices[next_board].val in ["X", "O", "-"]:
         score += 2
     else:
         next_boardgraph = graph_list[next_board]
         danger = 0
-
         for line in WINNING_LINES:
             vals = [next_boardgraph.vertices[i - 1].val for i in line]
             if vals.count("X") == BOARD_SIZE - 1 and vals.count("") == 1:
                 danger += 1
-
         if danger == 0:
             score += 1
 
     boardgraph.vertices[idx].val = ""
-
     return score
 
+
 def cpu_move(b_index):
-    moves = []
+    best_score = -1
+    best_move = None
     frames = []
 
     if big_boardgraph.vertices[b_index - 1].val in ["X", "O", "-"]:
@@ -342,24 +367,25 @@ def cpu_move(b_index):
     else:
         frames.append(b_index - 1)
 
-    # Collect moves
     for f in frames:
         boardgraph = graph_list[f]
         for i in range(BOARD_SIZE * BOARD_SIZE):
             if boardgraph.vertices[i].val == "":
                 score = evaluate_move(boardgraph, i)
-                moves.append((score, i, f))
+                if score > best_score:
+                    best_score = score
+                    best_move = (i, f)
 
-    moves = merge_sort_moves(moves)
-
-    if moves:
-        _, idx, frame = moves[0]
+    if best_move:
+        idx, frame = best_move
         graph_list[frame].updatevalue(idx, "O")
         return idx, frame
 
     return None
-
 def cpu_turn(b_index):
+    stop_timer()
+    global extra_turn,current_player_frame
+
     move = cpu_move(b_index)
     if not move:
         big_board_check_winner()
@@ -367,18 +393,33 @@ def cpu_turn(b_index):
 
     cell, frame = move
     display_values()
-    sb_checkwinner(frame + 1)
+
+    won = sb_checkwinner(frame + 1)
 
     if big_board_check_winner():
+        return
+
+    if won:
+        w.after(800, lambda: cpu_turn(cell + 1))
         return
 
     if big_boardgraph.vertices[cell].val in ["X", "O", "-"]:
         enable_all_valid_boards()
         displaymove(cell, "notallowed", frame)
+        current_player_frame = None
     else:
-        highlight_frame(cell)
         enable_button(cell)
         displaymove(cell, "allowed", frame)
+    current_player_frame = cell + 1
+    if big_boardgraph.vertices[cell].val in ["X", "O", "-"]:
+        enable_all_valid_boards()
+        displaymove(cell, "notallowed", frame)
+    else:
+        enable_button(cell)
+        displaymove(cell, "allowed", frame)
+    current_player_frame = cell + 1
+    
+    start_timer() 
 
 
 def clicked(f_index, b_index):
@@ -389,26 +430,28 @@ def clicked(f_index, b_index):
 
     if big_boardgraph.vertices[f_index - 1].val in ["X", "O", "-"]:
         return
-
+    stop_timer()
     disable_button()
     graph_list[f_index - 1].updatevalue(b_index - 1, "X")
     display_values()
 
-    sb_checkwinner(f_index)
     won = sb_checkwinner(f_index)
 
     if big_board_check_winner():
         return
 
-    # Momentum Rule
     if won:
         enable_all_valid_boards()
+        start_timer()
         return
 
     w.after(1000, lambda: cpu_turn(b_index))
 
+
+
 def reset_game():
     global graph_list, big_boardgraph
+    stop_timer()
 
     graph_list = []
     for _ in range(9):
@@ -428,6 +471,10 @@ def reset_game():
 
     enable_all_valid_boards()
     move_label.config(text="You start! Make your move anywhere.")
+    start_timer()
+
+
+# ── UI setup ──────────────────────────────────────────────────────────────────
 
 w = tk.Tk()
 w.geometry("1024x720")
@@ -437,8 +484,8 @@ w.resizable(False, False)
 f_bg = tk.Frame(w, bd=2, relief="ridge", bg="#547792")
 f_bg.place(x=0, y=0, height=720, width=1024)
 
-l1 = tk.Label(w, text="X-O Nexus", font=("Arial", 24, "bold"), bg="#547792",fg="#E1EBEE")
-l1.place(x=437, y=40)
+tk.Label(w, text="X-O Nexus", font=("Arial", 24, "bold"),
+         bg="#547792", fg="#E1EBEE").place(x=437, y=40)
 
 sf = []
 buttons = []
@@ -472,12 +519,13 @@ for i in range(9):
 
     buttons.append(btns)
 
+# Big-board grid lines
 tk.Label(w, bg="#003153").place(x=420, y=112, width=5, height=482)
 tk.Label(w, bg="#003153").place(x=603, y=112, width=5, height=482)
 tk.Label(w, bg="#003153").place(x=238, y=270, width=550, height=5)
 tk.Label(w, bg="#003153").place(x=238, y=432, width=549, height=5)
-tk.Label(w, bg="#003153").place(x=238, y=112, width=5, height=482)
-tk.Label(w, bg="#003153").place(x=787, y=112, width=5, height=486)
+tk.Label(w, bg="#003153").place(x=238, y=112, width=5,   height=482)
+tk.Label(w, bg="#003153").place(x=787, y=112, width=5,   height=486)
 tk.Label(w, bg="#003153").place(x=238, y=112, width=550, height=5)
 tk.Label(w, bg="#003153").place(x=238, y=594, width=553, height=5)
 
@@ -486,13 +534,19 @@ tk.Button(
     relief="groove", command=reset_game
 ).place(x=462, y=665)
 
+timer_label = tk.Label(
+    f_bg, text=f"Time: {TURN_TIME_LIMIT}s",
+    font=("Arial", 18, "bold"), bg="#547792", fg="#E1EBEE"
+)
+timer_label.place(x=50, y=80)    
+
 move_label = tk.Label(
     f_bg, text="You start! Make your move anywhere.",
-    font=("Arial", 16, "bold"), bg="#547792",fg="#E1EBEE"
+    font=("Arial", 16, "bold"), bg="#547792", fg="#E1EBEE"
 )
 move_label.place(x=180, y=620)
 
-# Highlight all frames at game start
 enable_all_valid_boards()
+start_timer()
 
 w.mainloop()
