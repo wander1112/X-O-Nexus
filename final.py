@@ -476,12 +476,15 @@ def cpu_turn(b_index):
     stop_timer()
     global current_player_frame
 
-    move = cpu_move(b_index)
+    move = cpu_move_dc(b_index)
+
     if not move:
         big_board_check_winner()
         return
 
     cell, frame = move
+
+    graph_list[frame].updatevalue(cell, "O")
     display_values()
 
     won = sb_checkwinner(frame + 1)
@@ -493,7 +496,16 @@ def cpu_turn(b_index):
         w.after(800, lambda: cpu_turn(cell + 1))
         return
 
+    forced_closed = False
+
     if big_boardgraph.vertices[cell].val in ["X", "O", "-"]:
+        forced_closed = True
+    else:
+        # also check if no empty cells
+        if all(v.val != "" for v in graph_list[cell].vertices):
+            forced_closed = True
+
+    if forced_closed:
         enable_all_valid_boards()
         displaymove(cell, "notallowed", frame)
         current_player_frame = None  # Player can play anywhere
@@ -504,7 +516,6 @@ def cpu_turn(b_index):
         current_player_frame = cell + 1  # Player must play in this specific frame
     
     start_timer()
-
 
 def clicked(f_index, b_index):
     if graph_list[f_index - 1].vertices[b_index - 1].val != "":
