@@ -439,7 +439,6 @@ def evaluate_move(boardgraph, idx):
 
 
 def cpu_move_dc(b_index):
-
     best = -999
     mv = None
 
@@ -454,9 +453,7 @@ def cpu_move_dc(b_index):
 
     for f in frames:
         for c in range(9):
-
             if graph_list[f].vertices[c].val == "":
-
                 won_small = sim_move(f, c, "O")
 
                 next_board = c
