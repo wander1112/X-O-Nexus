@@ -399,34 +399,41 @@ def evaluate_move(boardgraph, idx):
     return score
 
 
-def cpu_move(b_index):
-    moves = []
+def cpu_move_dc(b_index):
+
+    best = -999
+    mv = None
+
     frames = []
 
-    if big_boardgraph.vertices[b_index - 1].val in ["X", "O", "-"]:
+    if big_boardgraph.vertices[b_index - 1].val == "":
+        frames.append(b_index - 1)
+    else:
         for i in range(9):
             if big_boardgraph.vertices[i].val == "":
                 frames.append(i)
-    else:
-        frames.append(b_index - 1)
 
-    # Collect moves with scores
     for f in frames:
-        boardgraph = graph_list[f]
-        for i in range(BOARD_SIZE * BOARD_SIZE):
-            if boardgraph.vertices[i].val == "":
-                score = evaluate_move(boardgraph, i)
-                moves.append((score, i, f))
+        for c in range(9):
 
-    # Sort moves using merge sort (descending order by score)
-    moves = merge_sort_moves(moves)
+            if graph_list[f].vertices[c].val == "":
 
-    if moves:
-        _, idx, frame = moves[0]
-        graph_list[frame].updatevalue(idx, "O")
-        return idx, frame
+                won_small = sim_move(f, c, "O")
 
-    return None
+                next_board = c
+
+                if won_small:
+                    s = rec(next_board, 2, True)
+                else:
+                    s = rec(next_board, 2, False)
+
+                undo_move(f, c)
+
+                if s > best:
+                    best = s
+                    mv = (c, f)
+
+    return mv
 
 
 def cpu_turn(b_index):
