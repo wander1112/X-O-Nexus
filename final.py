@@ -157,6 +157,26 @@ def big_board_check_winner():
     return False
 
 
+def eval_state():
+    score = 0
+
+    # Big board win
+    for s in ["O", "X"]:
+        for line in WINNING_LINES:
+            if dac_check_line(big_boardgraph, line, s):
+                return 1000 if s == "O" else -1000
+
+    # Small board wins
+    for i in range(9):
+        val = big_boardgraph.vertices[i].val
+
+        if val == "O":
+            score += 100
+        elif val == "X":
+            score -= 100
+
+    return score
+
 def add_label(val, f_index):
     for widget in sf[f_index - 1].winfo_children():
         if isinstance(widget, tk.Label):
