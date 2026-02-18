@@ -382,6 +382,8 @@ def cpu_turn(b_index):
 
 
 def clicked(f_index, b_index):
+    global extra_turn
+
     if graph_list[f_index - 1].vertices[b_index - 1].val != "":
         return
 
@@ -392,9 +394,14 @@ def clicked(f_index, b_index):
     graph_list[f_index - 1].updatevalue(b_index - 1, "X")
     display_values()
 
-    sb_checkwinner(f_index)
+    won = sb_checkwinner(f_index)
 
     if big_board_check_winner():
+        return
+
+    # Momentum Rule
+    if won:
+        enable_all_valid_boards()
         return
 
     w.after(1000, lambda: cpu_turn(b_index))
