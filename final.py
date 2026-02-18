@@ -66,7 +66,35 @@ for _ in range(9):
 
 big_boardgraph, _ = createList(BOARD_SIZE)
 
+def merge_sort_moves(arr):
+    if len(arr) <= 1:
+        return arr
 
+    mid = len(arr) // 2
+    left = merge_sort_moves(arr[:mid])
+    right = merge_sort_moves(arr[mid:])
+
+    return merge(left, right)
+
+
+def merge(left, right):
+    result = []
+    i = j = 0
+
+    # Descending order (highest score first)
+    while i < len(left) and j < len(right):
+        if left[i][0] >= right[j][0]:  
+            result.append(left[i])
+            i += 1
+        else:
+            result.append(right[j])
+            j += 1
+
+    # Remaining elements
+    result.extend(left[i:])
+    result.extend(right[j:])
+
+    return result
 
 def dfs_check_line(boardgraph, line, index, symbol):
     if index == len(line):
