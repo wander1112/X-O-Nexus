@@ -177,6 +177,25 @@ def eval_state():
 
     return score
 
+def sim_move(f, c, sym):
+    graph_list[f].vertices[c].val = sym
+
+    won_small = False
+
+    for s in ["X", "O"]:
+        for line in WINNING_LINES:
+            if dac_check_line(graph_list[f], line, s):
+                big_boardgraph.vertices[f].val = s
+                won_small = True
+
+    if not won_small:
+        if all(v.val in ["X","O"] for v in graph_list[f].vertices):
+            big_boardgraph.vertices[f].val = "-"
+
+    return won_small
+
+
+
 def add_label(val, f_index):
     for widget in sf[f_index - 1].winfo_children():
         if isinstance(widget, tk.Label):
