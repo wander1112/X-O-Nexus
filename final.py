@@ -488,7 +488,45 @@ def cpu_move_dc(b_index):
                     mv = (c, f)
 
     return mv
+def rec(b_index, depth, turn):
+    if depth == 0:
+        return eval_state()
 
+    sc = []
+
+    # forced board logic
+    frames = []
+
+    if big_boardgraph.vertices[b_index].val == "":
+        frames.append(b_index)
+    else:
+        for i in range(9):
+            if big_boardgraph.vertices[i].val == "":
+                frames.append(i)
+
+    for f in frames:
+        for c in range(9):
+            if graph_list[f].vertices[c].val == "":
+                won_small = sim_move(f, c, "O" if turn else "X")
+
+                next_board = c
+
+                if won_small:
+                    s = rec(next_board, depth-1, turn)
+                else:
+                    s = rec(next_board, depth-1, not turn)
+
+                sc.append(s)
+
+                undo_move(f, c)
+
+    if not sc:
+        return eval_state()
+
+    if turn:
+        return dmax(sc)
+    else:
+        return dmin(sc)
 
 def cpu_turn(b_index):
     stop_timer()
