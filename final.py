@@ -1,7 +1,7 @@
 import tkinter as tk
 import random
 
-BOARD_SIZE = 3 
+BOARD_SIZE = 3
 
 
 class Vertex:
@@ -57,6 +57,7 @@ def createList(N):
 
     return g, winning_lines
 
+
 graph_list = []
 WINNING_LINES = []
 
@@ -67,60 +68,12 @@ for _ in range(9):
 big_boardgraph, _ = createList(BOARD_SIZE)
 
 # Timer globals
+
 TURN_TIME_LIMIT = 21
 timer_running = False
 time_remaining = TURN_TIME_LIMIT
 timer_job = None
 current_player_frame = None
-
-
-def merge_sort_moves(arr):
-    if len(arr) <= 1:
-        return arr
-
-    mid = len(arr) // 2
-    left = merge_sort_moves(arr[:mid])
-    right = merge_sort_moves(arr[mid:])
-
-    return merge(left, right)
-
-
-def merge(left, right):
-    result = []
-    i = j = 0
-
-    # Descending order (highest score first)
-    while i < len(left) and j < len(right):
-        if left[i][0] >= right[j][0]:  
-            result.append(left[i])
-            i += 1
-        else:
-            result.append(right[j])
-            j += 1
-
-    # Remaining elements
-    result.extend(left[i:])
-    result.extend(right[j:])
-
-    return result
-
-
-def dmin(a):
-    if len(a) == 1:
-        return a[0]
-    m = len(a)//2
-    l = dmin(a[:m])
-    r = dmin(a[m:])
-    return l if l < r else r
-
-
-def dmax(a):
-    if len(a) == 1:
-        return a[0]
-    m = len(a)//2
-    l = dmax(a[:m])
-    r = dmax(a[m:])
-    return l if l > r else r
 
 
 def dfs_check_line(boardgraph, line, index, symbol):
@@ -173,45 +126,6 @@ def big_board_check_winner():
         return True
 
     return False
-
-
-def eval_state():
-    score = 0
-
-    # Big board win
-    for s in ["O", "X"]:
-        for line in WINNING_LINES:
-            if dac_check_line(big_boardgraph, line, s):
-                return 1000 if s == "O" else -1000
-
-    # Small board wins
-    for i in range(9):
-        val = big_boardgraph.vertices[i].val
-
-        if val == "O":
-            score += 100
-        elif val == "X":
-            score -= 100
-
-    return score
-
-def sim_move(f, c, sym):
-    graph_list[f].vertices[c].val = sym
-
-    won_small = False
-
-    for s in ["X", "O"]:
-        for line in WINNING_LINES:
-            if dac_check_line(graph_list[f], line, s):
-                big_boardgraph.vertices[f].val = s
-                won_small = True
-
-    if not won_small:
-        if all(v.val in ["X","O"] for v in graph_list[f].vertices):
-            big_boardgraph.vertices[f].val = "-"
-
-    return won_small
-
 
 
 def add_label(val, f_index):
@@ -291,12 +205,11 @@ def enable_button(board_index):
 
 
 def set_frame_highlight(board_index, highlighted):
-    """Apply or remove highlight colour from a frame, its buttons, and any overlay label."""
-    color     = "#FAB95B"        if highlighted else "white"
-    btn_color = "#FAB95B"        if highlighted else "SystemButtonFace"
-    lbl_bg    = "#FAB95B"        if highlighted else "#547792"
-    bd        = 4                if highlighted else 2
-    relief    = "solid"          if highlighted else "ridge"
+    color     = "#FAB95B"       if highlighted else "white"
+    btn_color = "#FAB95B"       if highlighted else "SystemButtonFace"
+    lbl_bg    = "#FAB95B"       if highlighted else "#547792"
+    bd        = 4               if highlighted else 2
+    relief    = "solid"         if highlighted else "ridge"
 
     sf[board_index].config(bg=color, bd=bd, relief=relief)
 
@@ -332,53 +245,57 @@ def display_values():
             buttons[bi][ci].config(text=graph_list[bi].vertices[ci].val)
 
 
-def displaymove(a, v, f):
-    if v == "notallowed":
+def is_frame_playable(board_index_0based):
+
+    if big_boardgraph.vertices[board_index_0based].val in ["X", "O", "-"]:
+        return False
+    return any(v.val == "" for v in graph_list[board_index_0based].vertices)
+
+
+def displaymove(next_frame_0based, free_choice, frame_played_0based):
+    cpu_frame_display = frame_played_0based + 1
+    cpu_cell_display  = next_frame_0based + 1
+
+    if free_choice:
         move_label.config(
-            text=f"CPU played F{f+1} C{a+1}. Make a move in any unoccupied frame."
+            text=f"CPU played F{cpu_frame_display} C{cpu_cell_display}. "
+                 f"Make a move in any unoccupied frame."
         )
     else:
         move_label.config(
-            text=f"CPU played F{f+1} C{a+1}. Your next move should be in F{a+1}."
+            text=f"CPU played F{cpu_frame_display} C{cpu_cell_display}. "
+                 f"Your next move should be in F{next_frame_0based + 1}."
         )
 
-
-# ══════════════════════════════════════════════════════════════════════════════
-# TIMER FUNCTIONS
-# ══════════════════════════════════════════════════════════════════════════════
+# Timer functions
 
 def update_timer():
-    """Update the timer display every second."""
     global time_remaining, timer_running, timer_job
-    
+
     if not timer_running:
         return
-    
+
     if time_remaining > 0:
         time_remaining -= 1
-        
-        # Update timer display with color coding
+
         if time_remaining <= 5:
-            timer_label.config(text=f"Time: {time_remaining}s", fg="#FF4C4C")  # Red
+            timer_label.config(text=f"Time: {time_remaining}s", fg="#FF4C4C")
         elif time_remaining <= 10:
-            timer_label.config(text=f"Time: {time_remaining}s", fg="#FFA500")  # Orange
+            timer_label.config(text=f"Time: {time_remaining}s", fg="#FFA500")
         else:
-            timer_label.config(text=f"Time: {time_remaining}s", fg="#E1EBEE")  # Normal
-        
-        # Schedule next update
+            timer_label.config(text=f"Time: {time_remaining}s", fg="#E1EBEE")
+
         timer_job = w.after(1000, update_timer)
     else:
-        # Time's up! CPU wins the turn
         timer_label.config(text="Time's up!", fg="#FF4C4C")
         stop_timer()
         time_up_forfeit()
 
 
 def start_timer():
-    """Start the turn timer for player."""
     global time_remaining, timer_running, timer_job
-    
-    stop_timer()  # Stop any existing timer
+
+    stop_timer()
     time_remaining = TURN_TIME_LIMIT
     timer_running = True
     timer_label.config(text=f"Time: {time_remaining}s", fg="#E1EBEE")
@@ -386,9 +303,8 @@ def start_timer():
 
 
 def stop_timer():
-    """Stop the timer."""
     global timer_running, timer_job
-    
+
     timer_running = False
     if timer_job:
         w.after_cancel(timer_job)
@@ -396,105 +312,97 @@ def stop_timer():
 
 
 def time_up_forfeit():
-    """Handle what happens when player runs out of time."""
     global current_player_frame
-    
+
     disable_button()
     move_label.config(text="Time's up! CPU gets a free move in your frame.")
-    
-    # CPU plays in the frame where the player should have played
+
     if current_player_frame is not None:
-        # Player had a specific frame to play in
         target_frame = current_player_frame
     else:
-        # Player could play anywhere, pick a random valid board
-        valid_boards = [i for i in range(9) 
-                        if big_boardgraph.vertices[i].val == "" 
+        valid_boards = [i for i in range(9)
+                        if big_boardgraph.vertices[i].val == ""
                         and any(v.val == "" for v in graph_list[i].vertices)]
         if valid_boards:
             target_frame = random.choice(valid_boards) + 1
         else:
             return
-    
-    # CPU makes its move in the target frame
+
     w.after(1500, lambda: cpu_turn(target_frame))
 
 
-# ══════════════════════════════════════════════════════════════════════════════
+# Divide and Conquer
+
+def dmin(a):
+    if len(a) == 1:
+        return a[0]
+    m = len(a) // 2
+    l = dmin(a[:m])
+    r = dmin(a[m:])
+    return l if l < r else r
 
 
-def evaluate_move(boardgraph, idx):
+def dmax(a):
+    if len(a) == 1:
+        return a[0]
+    m = len(a) // 2
+    l = dmax(a[:m])
+    r = dmax(a[m:])
+    return l if l > r else r
+
+
+def eval_state():
     score = 0
 
-    boardgraph.vertices[idx].val = "O"
-
-    for line in WINNING_LINES:
-        vals = [boardgraph.vertices[i - 1].val for i in line]
-        if vals.count("O") == BOARD_SIZE:
-            score += 3
-
-    for line in WINNING_LINES:
-        vals = [boardgraph.vertices[i - 1].val for i in line]
-        if vals.count("X") == BOARD_SIZE - 1 and vals.count("O") == 1:
-            score += 2
-
-    next_board = idx
-
-    if big_boardgraph.vertices[next_board].val in ["X", "O", "-"]:
-        score += 2
-    else:
-        next_boardgraph = graph_list[next_board]
-        danger = 0
+    for s in ["O", "X"]:
         for line in WINNING_LINES:
-            vals = [next_boardgraph.vertices[i - 1].val for i in line]
-            if vals.count("X") == BOARD_SIZE - 1 and vals.count("") == 1:
-                danger += 1
-        if danger == 0:
-            score += 1
+            if dac_check_line(big_boardgraph, line, s):
+                return 1000 if s == "O" else -1000
 
-    boardgraph.vertices[idx].val = ""
+    for i in range(9):
+        val = big_boardgraph.vertices[i].val
+        if val == "O":
+            score += 100
+        elif val == "X":
+            score -= 100
+
     return score
 
 
-def cpu_move_dc(b_index):
-    best = -999
-    mv = None
+def sim_move(f, c, sym):
+    original_big_board_val = big_boardgraph.vertices[f].val
 
-    frames = []
+    graph_list[f].vertices[c].val = sym
 
-    if big_boardgraph.vertices[b_index - 1].val == "":
-        frames.append(b_index - 1)
-    else:
-        for i in range(9):
-            if big_boardgraph.vertices[i].val == "":
-                frames.append(i)
+    won_small = False
 
-    for f in frames:
-        for c in range(9):
-            if graph_list[f].vertices[c].val == "":
-                won_small = sim_move(f, c, "O")
+    if original_big_board_val == "":
+        for s in ["X", "O"]:
+            for line in WINNING_LINES:
+                if dac_check_line(graph_list[f], line, s):
+                    big_boardgraph.vertices[f].val = s
+                    won_small = True
+                    break
+            if won_small:
+                break
 
-                next_board = c
+        if not won_small:
+            if all(v.val in ["X", "O"] for v in graph_list[f].vertices):
+                big_boardgraph.vertices[f].val = "-"
 
-                if won_small:
-                    s = rec(next_board, 2, True)
-                else:
-                    s = rec(next_board, 2, False)
+    return won_small, original_big_board_val
 
-                undo_move(f, c)
 
-                if s > best:
-                    best = s
-                    mv = (c, f)
+def undo_move(f, c, original_big_board_val):
+    graph_list[f].vertices[c].val = ""
+    big_boardgraph.vertices[f].val = original_big_board_val
 
-    return mv
+
 def rec(b_index, depth, turn):
     if depth == 0:
         return eval_state()
 
     sc = []
-
-    # forced board logic
     frames = []
 
     if big_boardgraph.vertices[b_index].val == "":
@@ -507,28 +415,134 @@ def rec(b_index, depth, turn):
     for f in frames:
         for c in range(9):
             if graph_list[f].vertices[c].val == "":
-                won_small = sim_move(f, c, "O" if turn else "X")
-
+                won_small, orig_val = sim_move(f, c, "O" if turn else "X")
                 next_board = c
 
                 if won_small:
-                    s = rec(next_board, depth-1, turn)
+                    s = rec(next_board, depth - 1, turn)
                 else:
-                    s = rec(next_board, depth-1, not turn)
+                    s = rec(next_board, depth - 1, not turn)
 
                 sc.append(s)
-
-                undo_move(f, c)
+                undo_move(f, c, orig_val)
 
     if not sc:
         return eval_state()
 
-    if turn:
-        return dmax(sc)
+    return dmax(sc) if turn else dmin(sc)
+
+
+def snapshot_state():
+
+    big_snap = [v.val for v in big_boardgraph.vertices]
+    small_snap = [[v.val for v in g.vertices] for g in graph_list]
+    return big_snap, small_snap
+
+
+def restore_state(big_snap, small_snap):
+
+    for i, val in enumerate(big_snap):
+        big_boardgraph.vertices[i].val = val
+    for gi, board_snap in enumerate(small_snap):
+        for ci, val in enumerate(board_snap):
+            graph_list[gi].vertices[ci].val = val
+
+
+def cpu_move_dc(b_index):
+    best = -999
+    mv = None
+
+    big_snap, small_snap = snapshot_state()
+
+    frames = []
+    if big_boardgraph.vertices[b_index - 1].val == "":
+        frames.append(b_index - 1)
     else:
-        return dmin(sc)
+        for i in range(9):
+            if big_boardgraph.vertices[i].val == "":
+                frames.append(i)
+
+    for f in frames:
+        for c in range(9):
+            if graph_list[f].vertices[c].val == "":
+                won_small, orig_val = sim_move(f, c, "O")
+                next_board = c
+
+                if won_small:
+                    s = rec(next_board, 2, True)
+                else:
+                    s = rec(next_board, 2, False)
+
+                undo_move(f, c, orig_val)
+
+                if s > best:
+                    best = s
+                    mv = (c, f)
+
+    restore_state(big_snap, small_snap)
+
+    return mv
+
+
+def user_hint(b_index):
+    best = 999
+    mv = None
+
+    big_snap, small_snap = snapshot_state()
+
+    frames = []
+    if big_boardgraph.vertices[b_index - 1].val == "":
+        frames.append(b_index - 1)
+    else:
+        for i in range(9):
+            if big_boardgraph.vertices[i].val == "":
+                frames.append(i)
+
+    for f in frames:
+        for c in range(9):
+            if graph_list[f].vertices[c].val == "":
+                won_small, orig_val = sim_move(f, c, "X")
+                next_board = c
+
+                if won_small:
+                    s = rec(next_board, 2, False)
+                else:
+                    s = rec(next_board, 2, True)
+
+                undo_move(f, c, orig_val)
+
+                if s < best:
+                    best = s
+                    mv = (c, f)
+
+    restore_state(big_snap, small_snap)
+
+    return mv
+
+
+def show_hint():
+    forced_boards = []
+    for i in range(9):
+        if sf[i].cget("bg") == "#FAB95B":
+            forced_boards.append(i + 1)
+
+    if not forced_boards:
+        move_label.config(text="No valid hint available.")
+        return
+
+    forced_board = forced_boards[0]
+    move = user_hint(forced_board)
+
+    if move:
+        cell, frame = move
+        move_label.config(text=f"Hint: Try Frame {frame+1}, Cell {cell+1}")
+    else:
+        move_label.config(text="No possible hint.")
+
+
 
 def cpu_turn(b_index):
+
     stop_timer()
     global current_player_frame
 
@@ -538,40 +552,40 @@ def cpu_turn(b_index):
         big_board_check_winner()
         return
 
-    cell, frame = move
+    cell, frame = move      
+
+    frame_was_already_closed = big_boardgraph.vertices[frame].val in ["X", "O", "-"]
 
     graph_list[frame].updatevalue(cell, "O")
     display_values()
 
-    won = sb_checkwinner(frame + 1)
+    sb_checkwinner(frame + 1)   # updates big_boardgraph if newly won/tied
 
     if big_board_check_winner():
         return
 
-    if won:
+    # Momentum rule fires ONLY if this move itself newly closed the small board
+    frame_is_now_closed = big_boardgraph.vertices[frame].val in ["X", "O", "-"]
+    newly_closed = (not frame_was_already_closed) and frame_is_now_closed
+
+    if newly_closed:
         w.after(800, lambda: cpu_turn(cell + 1))
         return
 
-    forced_closed = False
+    next_frame_0 = cell
 
-    if big_boardgraph.vertices[cell].val in ["X", "O", "-"]:
-        forced_closed = True
+    if is_frame_playable(next_frame_0):
+        highlight_frame(next_frame_0)
+        enable_button(next_frame_0)
+        current_player_frame = next_frame_0 + 1
+        displaymove(next_frame_0, False, frame)
     else:
-        # also check if no empty cells
-        if all(v.val != "" for v in graph_list[cell].vertices):
-            forced_closed = True
-
-    if forced_closed:
         enable_all_valid_boards()
-        displaymove(cell, "notallowed", frame)
-        current_player_frame = None  # Player can play anywhere
-    else:
-        highlight_frame(cell)
-        enable_button(cell)
-        displaymove(cell, "allowed", frame)
-        current_player_frame = cell + 1  # Player must play in this specific frame
-    
+        current_player_frame = None
+        displaymove(next_frame_0, True, frame)
+
     start_timer()
+
 
 def clicked(f_index, b_index):
     if graph_list[f_index - 1].vertices[b_index - 1].val != "":
@@ -625,7 +639,7 @@ def reset_game():
     start_timer()
 
 
-# ── UI setup ──────────────────────────────────────────────────────────────────
+# UI setup 
 
 w = tk.Tk()
 w.geometry("1024x720")
@@ -683,7 +697,12 @@ tk.Label(w, bg="#003153").place(x=238, y=594, width=553, height=5)
 tk.Button(
     w, text="RESET", font=("Arial", 14, "bold"),
     relief="groove", command=reset_game
-).place(x=462, y=665)
+).place(x=412, y=665)
+
+tk.Button(
+    w, text="HINT", font=("Arial", 14, "bold"),
+    relief="groove", command=show_hint
+).place(x=522, y=665)
 
 # Timer display
 timer_label = tk.Label(
@@ -694,9 +713,10 @@ timer_label.place(x=50, y=80)
 
 move_label = tk.Label(
     f_bg, text="You start! Make your move anywhere.",
-    font=("Arial", 16, "bold"), bg="#547792", fg="#E1EBEE"
+    font=("Arial", 14, "bold"), bg="#547792", fg="#E1EBEE",
+    wraplength=800
 )
-move_label.place(x=180, y=620)
+move_label.place(x=112, y=615, width=800, height=40)
 
 enable_all_valid_boards()
 start_timer()
