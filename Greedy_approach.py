@@ -494,3 +494,4 @@ move_label = tk.Label(
 move_label.place(x=250, y=620)
 
 w.mainloop()
+
