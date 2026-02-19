@@ -105,6 +105,24 @@ def merge(left, right):
     return result
 
 
+def dmin(a):
+    if len(a) == 1:
+        return a[0]
+    m = len(a)//2
+    l = dmin(a[:m])
+    r = dmin(a[m:])
+    return l if l < r else r
+
+
+def dmax(a):
+    if len(a) == 1:
+        return a[0]
+    m = len(a)//2
+    l = dmax(a[:m])
+    r = dmax(a[m:])
+    return l if l > r else r
+
+
 def dfs_check_line(boardgraph, line, index, symbol):
     if index == len(line):
         return True
