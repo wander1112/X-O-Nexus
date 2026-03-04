@@ -1,9 +1,10 @@
 import random
 import tkinter as tk
 
-
+GAME_MODE = 1  
+dp_cache = {}   
 BOARD_SIZE = 3 
-dp_cache = {}
+pattern_cache = {}
 
 class Vertex:
     def __init__(self, val):
@@ -44,7 +45,7 @@ def createList(N): # The function has a time complexity of O(N^2).
 
 graph_list = []
 WINNING_LINES = []
-for _ in range(9):
+for i in range(BOARD_SIZE * BOARD_SIZE):
     g, WINNING_LINES = createList(BOARD_SIZE)
     graph_list.append(g)
 big_boardgraph, _ = createList(BOARD_SIZE)
@@ -193,7 +194,7 @@ def set_frame_highlight(board_index, highlighted):
 
 
 def reset_frame_colors():
-    for i in range(9):
+    for i in range(BOARD_SIZE * BOARD_SIZE):
         set_frame_highlight(i, False)
 
 
@@ -204,14 +205,14 @@ def highlight_frame(board_index):
 
 def enable_all_valid_boards():
     reset_frame_colors()
-    for i in range(9):
+    for i in range(BOARD_SIZE * BOARD_SIZE):
         if big_boardgraph.vertices[i].val == "":
             set_frame_highlight(i, True)
             enable_button(i)
 
 
 def display_values():
-    for bi in range(9):
+    for bi in range(BOARD_SIZE * BOARD_SIZE):
         for ci in range(BOARD_SIZE * BOARD_SIZE):
             buttons[bi][ci].config(text=graph_list[bi].vertices[ci].val)
 
@@ -235,7 +236,6 @@ def displaymove(a, v, f):
 
 
 def update_timer():
-    """Update the timer display every second."""
     global time_remaining, timer_running, timer_job
     
     if not timer_running:
@@ -292,45 +292,41 @@ def time_up_forfeit():
         else:
             return
     w.after(1500, lambda: cpu_turn(target_frame))
-def make_key(b_index, depth, turn):
-    big_state = tuple(v.val for v in big_boardgraph.vertices)
-    small_state = tuple(
-        tuple(v.val for v in g.vertices)
-        for g in graph_list
-    )
-    return (big_state, small_state, b_index, depth, turn)
 
-def dmin(a):
-    if len(a) == 1:
-        return a[0]
-    m = len(a)//2
-    l = dmin(a[:m])
-    r = dmin(a[m:])
-    return l if l < r else r
+def compress_board_pattern(boardgraph):
+    patterns = []
 
-def dmax(a):
-    if len(a) == 1:
-        return a[0]
-    m = len(a)//2
-    l = dmax(a[:m])
-    r = dmax(a[m:])
-    return l if l > r else r
+    for line in WINNING_LINES:
+        x = o = e = 0
+        for pos in line:
+            val = boardgraph.vertices[pos - 1].val
+            if val == "X":
+                x += 1
+            elif val == "O":
+                o += 1
+            else:
+                e += 1
 
-def eval_state():# The function has a time complexity of O(1).
-    score = 0
-    for s in ["O", "X"]:
-        for line in WINNING_LINES:
-            if dac_check_line(big_boardgraph, line, s):
-                return 1000 if s == "O" else -1000
-    for i in range(9):
-        val = big_boardgraph.vertices[i].val
+        patterns.append((x, o, e))
 
-        if val == "O":
-            score += 100
-        elif val == "X":
-            score -= 100
-    return score
+    return patterns
+def compress_game_pattern():
+    all_patterns = []
 
+    # Big board pattern
+    all_patterns.extend(compress_board_pattern(big_boardgraph))
+
+    # Small boards patterns
+    for g in graph_list:
+        all_patterns.extend(compress_board_pattern(g))
+
+    # Remove duplicates
+    unique_patterns = list(set(all_patterns))
+
+    # Sort to make canonical
+    unique_patterns.sort()
+
+    return tuple(unique_patterns)
 
 def sim_move(f, c, sym):# The function has a time complexity of O(1).
     original_big_board_val = big_boardgraph.vertices[f].val
@@ -357,51 +353,6 @@ def undo_move(f, c, original_big_board_val):# The function has a time complexity
     graph_list[f].vertices[c].val = ""
     big_boardgraph.vertices[f].val = original_big_board_val
 
-def rec(b_index, depth, turn):# The function has a time complexity of O(states).
-
-    key = make_key(b_index, depth, turn)
-    if key in dp_cache:
-        return dp_cache[key]
-
-    if depth == 0:
-        val = eval_state()
-        dp_cache[key] = val
-        return val
-
-    sc = []
-
-    frames = []
-
-    if big_boardgraph.vertices[b_index].val == "":
-        frames.append(b_index)
-    else:
-        for i in range(9):
-            if big_boardgraph.vertices[i].val == "":
-                frames.append(i)
-
-    for f in frames:
-        for c in range(9):
-            if graph_list[f].vertices[c].val == "":
-                won_small, orig_val = sim_move(f, c, "O" if turn else "X")
-
-                next_board = c
-
-                if won_small:
-                    s = rec(next_board, depth-1, turn)
-                else:
-                    s = rec(next_board, depth-1, not turn)
-                sc.append(s)
-                undo_move(f, c, orig_val)
-    if not sc:
-        val = eval_state()
-    else:
-        if turn:
-            val = dmax(sc)
-        else:
-            val = dmin(sc)
-
-    dp_cache[key] = val
-    return val
 
 
 def snapshot_state():# The function has a time complexity of O(81).
@@ -417,33 +368,201 @@ def restore_state(big_snap, small_snap):# The function has a time complexity of 
         for ci, val in enumerate(board_snap):
             graph_list[gi].vertices[ci].val = val
 
+def score_small_board(boardgraph, cpu="O", user="X"):
+    score = 0
+    for line in WINNING_LINES:
+        cpu_count = 0
+        user_count = 0
+        empty_count = 0
+        for pos in line:
+            val = boardgraph.vertices[pos - 1].val
+            if val == cpu:
+                cpu_count += 1
+            elif val == user:
+                user_count += 1
+            else:
+                empty_count += 1   
+        if cpu_count == 3:
+            score += 100
+        elif user_count == 3:
+            score -= 100
+        elif cpu_count == 2 and empty_count == 1:
+            score += 10
+        elif user_count == 2 and empty_count == 1:
+            score -= 10
+        elif cpu_count == 1 and empty_count == 2:
+            score += 1
+        elif user_count == 1 and empty_count == 2:
+            score -= 1
+    
+    return score
+small_board_scores = [0] * 9
+def score_big_board():
+    score = 0
+    
+    for i in range(9):
+        val = big_boardgraph.vertices[i].val
+        
+        if val == "O":
+            score += 200
+        elif val == "X":
+            score -= 200
+    
+    return score
+def update_all_small_board_scores():
+    for i in range(9):
+        if big_boardgraph.vertices[i].val == "":
+            small_board_scores[i] = score_small_board(graph_list[i])
+        else:
+           small_board_scores[i] = -9999   
+    
+def cpu_move_mode1(b_index):
+    best_move = None
+    best_score = -9999
 
-def cpu_move_dc(b_index):# The function has a time complexity of O(B^D).
-    best = -999
-    mv = None
-    big_snap, small_snap = snapshot_state()
-    frames = []
+    # Determine allowed boards
     if big_boardgraph.vertices[b_index - 1].val == "":
-        frames.append(b_index - 1)
+        allowed_boards = [b_index - 1]
     else:
-        for i in range(9):
-            if big_boardgraph.vertices[i].val == "":
-                frames.append(i)
+        allowed_boards = [
+            i for i in range(9)
+            if big_boardgraph.vertices[i].val == ""
+        ]
+
+    for board in allowed_boards:
+
+        # Use precomputed board score
+        board_base_score = small_board_scores[board]
+
+        for cell in range(9):
+            if graph_list[board].vertices[cell].val == "":
+                graph_list[board].vertices[cell].val = "O"
+                move_score = score_small_board(graph_list[board])
+                graph_list[board].vertices[cell].val = ""
+
+                total_score = board_base_score + move_score
+
+                if total_score > best_score:
+                    best_score = total_score
+                    best_move = (cell, board)
+
+    return best_move
+def make_key(b_index, depth, turn):
+    big_state = tuple(v.val for v in big_boardgraph.vertices)
+    small_state = tuple(
+        tuple(v.val for v in g.vertices)
+        for g in graph_list
+    )
+    return (big_state, small_state, b_index, depth, turn)
+def dmin(a):
+    if len(a) == 1:
+        return a[0]
+    m = len(a)//2
+    l = dmin(a[:m])
+    r = dmin(a[m:])
+    return l if l < r else r
+
+def dmax(a):
+    if len(a) == 1:
+        return a[0]
+    m = len(a)//2
+    l = dmax(a[:m])
+    r = dmax(a[m:])
+    return l if l > r else r
+def eval_state():
+    score = 0
+    for s in ["O", "X"]:
+        for line in WINNING_LINES:
+            if dac_check_line(big_boardgraph, line, s):
+                return 1000 if s == "O" else -1000
+
+    for i in range(9):
+        val = big_boardgraph.vertices[i].val
+        if val == "O":
+            score += 100
+        elif val == "X":
+            score -= 100
+    return score
+def rec(b_index, depth, turn):
+
+    key = (compress_game_pattern(), b_index, turn, depth)
+
+    if key in pattern_cache:
+        return pattern_cache[key]
+
+    if depth == 0:
+        val = eval_state()
+        pattern_cache[key] = val
+        return val
+
+    scores = []
+
+    # Forced board rule
+    if big_boardgraph.vertices[b_index].val == "":
+        frames = [b_index]
+    else:
+        frames = [i for i in range(9)
+                  if big_boardgraph.vertices[i].val == ""]
+
+    for f in frames:
+        for c in range(9):
+            if graph_list[f].vertices[c].val == "":
+                symbol = "O" if turn else "X"
+
+                won_small, orig_val = sim_move(f, c, symbol)
+
+                next_board = c
+
+                if won_small:
+                    # same player continues
+                    s = rec(next_board, depth - 1, turn)
+                else:
+                    # switch turn
+                    s = rec(next_board, depth - 1, not turn)
+
+                undo_move(f, c, orig_val)
+                scores.append(s)
+
+    if not scores:
+        val = eval_state()
+    else:
+        if turn:   # CPU (maximize)
+            val = max(scores)
+        else:      # User (minimize)
+            val = min(scores)
+
+    pattern_cache[key] = val
+    return val
+def cpu_move_mode2(b_index):
+
+    best = -9999
+    best_move = None
+
+    if big_boardgraph.vertices[b_index - 1].val == "":
+        frames = [b_index - 1]
+    else:
+        frames = [i for i in range(9)
+                  if big_boardgraph.vertices[i].val == ""]
+
     for f in frames:
         for c in range(9):
             if graph_list[f].vertices[c].val == "":
                 won_small, orig_val = sim_move(f, c, "O")
+
                 next_board = c
+
                 if won_small:
-                    s = rec(next_board, 1, True)
+                    s = rec(next_board, 2, True)
                 else:
-                    s = rec(next_board, 1, False)
+                    s = rec(next_board, 2, False)
+
                 undo_move(f, c, orig_val)
+
                 if s > best:
                     best = s
-                    mv = (c, f)
-    restore_state(big_snap, small_snap)
-    return mv
+                    best_move = (c, f)
+
+    return best_move
 
 
 def user_hint(b_index):
@@ -454,11 +573,11 @@ def user_hint(b_index):
     if big_boardgraph.vertices[b_index - 1].val == "":
         frames.append(b_index - 1)
     else:
-        for i in range(9):
+        for i in range(BOARD_SIZE * BOARD_SIZE):
             if big_boardgraph.vertices[i].val == "":
                 frames.append(i)
     for f in frames:
-        for c in range(9):
+        for c in range(BOARD_SIZE * BOARD_SIZE):
             if graph_list[f].vertices[c].val == "":
                 won_small, orig_val = sim_move(f, c, "X")
                 next_board = c
@@ -475,7 +594,7 @@ def user_hint(b_index):
 
 def show_hint():
     forced_board = None
-    for i in range(9):
+    for i in range(BOARD_SIZE * BOARD_SIZE):
         if sf[i].cget("bg") == "#FAB95B":
             forced_board = i + 1
             break
@@ -492,7 +611,10 @@ def show_hint():
 def cpu_turn(b_index):
     stop_timer()
     global current_player_frame
-    move = cpu_move_dc(b_index)
+    if GAME_MODE == 1:
+      move = cpu_move_mode1(b_index)
+    else:
+        move = cpu_move_mode2(b_index)
     if not move:
         big_board_check_winner()
         return
@@ -501,6 +623,7 @@ def cpu_turn(b_index):
     graph_list[frame].updatevalue(cell, "O")
     display_values()
     sb_checkwinner(frame + 1)
+    update_all_small_board_scores()
     if big_board_check_winner():
         return
     frame_is_now_closed = big_boardgraph.vertices[frame].val in ["X", "O", "-"]
@@ -533,6 +656,7 @@ def clicked(f_index, b_index):
     graph_list[f_index - 1].updatevalue(b_index - 1, "X")
     display_values()
     won = sb_checkwinner(f_index)
+    update_all_small_board_scores()
     if big_board_check_winner():
         return
     if won:
@@ -544,9 +668,9 @@ def clicked(f_index, b_index):
 def reset_game():
     global graph_list, big_boardgraph
     stop_timer()
-    dp_cache.clear()
+    pattern_cache.clear()
     graph_list = []
-    for _ in range(9):
+    for _ in range(BOARD_SIZE * BOARD_SIZE):
         g, _ = createList(BOARD_SIZE)
         graph_list.append(g)
     big_boardgraph, _ = createList(BOARD_SIZE)
@@ -573,7 +697,7 @@ sf = []
 buttons = []
 base_x = 238
 base_y = 110
-for i in range(9):
+for i in range(BOARD_SIZE * BOARD_SIZE):
     frame = tk.Frame(f_bg, bd=2, relief="ridge", bg="white")
     frame.place(
         x=base_x + (i % 3) * 183,
@@ -625,6 +749,29 @@ move_label = tk.Label(
     font=("Arial", 16, "bold"), bg="#547792", fg="#E1EBEE"
 )
 move_label.place(x=512, y=620, anchor="center")
+def set_mode1():
+    global GAME_MODE
+    GAME_MODE = 1
+    move_label.config(text="Mode 1 : DC")
+
+def set_mode2():
+    global GAME_MODE
+    GAME_MODE = 2
+    move_label.config(text="Mode 2 : DP")
+
+tk.Button(
+    w, text="MODE 1",
+    font=("Arial", 12, "bold"),
+    bg="#4CAF50", fg="white",
+    command=set_mode1
+).place(x=320, y=665)
+
+tk.Button(
+    w, text="MODE 2",
+    font=("Arial", 12, "bold"),
+    bg="#9C27B0", fg="white",
+    command=set_mode2
+).place(x=720, y=665)
 enable_all_valid_boards()
 start_timer()
 w.mainloop()
