@@ -136,7 +136,12 @@ def snapshot_state():  # O(81)
     small_snap = [[v.val for v in g.vertices] for g in graph_list]
     return big_snap, small_snap
 
-# restore state
+def restore_state(big_snap, small_snap):  # O(81)
+    for i, val in enumerate(big_snap):
+        big_boardgraph.vertices[i].val = val
+    for gi, board_snap in enumerate(small_snap):
+        for ci, val in enumerate(board_snap):
+            graph_list[gi].vertices[ci].val = val
 
 
 def score_small_board(boardgraph, cpu="O", user="X"):
@@ -166,7 +171,17 @@ def update_all_small_board_scores():
             small_board_scores[i] = -9999
 
 
-# eval state dc
+def eval_state_dc():
+    score = 0
+    for s in ["O", "X"]:
+        for line in WINNING_LINES:
+            if dac_check_line(big_boardgraph, line, s):
+                return 1000 if s == "O" else -1000
+    for i in range(9):
+        val = big_boardgraph.vertices[i].val
+        if val == "O":   score += 100
+        elif val == "X": score -= 100
+    return score
 
 
 # branch and bound 
