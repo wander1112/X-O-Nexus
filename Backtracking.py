@@ -188,11 +188,100 @@ def eval_state_dc():
 
 # cpu move bb
 
-# rec_dc
+def rec_dc(b_index, depth, turn):
+    if depth == 0:
+        return eval_state_dc()
+    scores = []
+    frames = ([b_index] if big_boardgraph.vertices[b_index].val == ""
+              else [i for i in range(9) if big_boardgraph.vertices[i].val == ""])
+    for f in frames:
+        for c in range(9):
+            if graph_list[f].vertices[c].val == "":
+                symbol = "O" if turn else "X"
+                won_small, orig_val = sim_move(f, c, symbol)
+                next_board = c
+                s = rec_dc(next_board, depth - 1, turn if won_small else not turn)
+                undo_move(f, c, orig_val)
+                scores.append(s)
+    if not scores:
+        return eval_state_dc()
+    return dmax(scores) if turn else dmin(scores)
 
-# user_hint
+def user_hint(b_index):
+    best = 999
+    mv = None
+    big_snap, small_snap = snapshot_state()
+    frames = ([b_index - 1] if big_boardgraph.vertices[b_index - 1].val == ""
+              else [i for i in range(BOARD_SIZE * BOARD_SIZE)
+                    if big_boardgraph.vertices[i].val == ""])
+    for f in frames:
+        for c in range(BOARD_SIZE * BOARD_SIZE):
+            if graph_list[f].vertices[c].val == "":
+                won_small, orig_val = sim_move(f, c, "X")
+                s = rec_dc(c, 1, False if won_small else True)
+                undo_move(f, c, orig_val)
+                if s < best:
+                    best = s
+                    mv = (c, f)
+    restore_state(big_snap, small_snap)
+    return mv
 
-#show hint
+def show_hint():
+    forced_board = None
+    for i in range(BOARD_SIZE * BOARD_SIZE):
+        if sf[i].cget("bg") == "#FAB95B":
+            forced_board = i + 1
+            break
+    if forced_board is None:
+        move_label.config(text="No valid hint available.")
+        return
+    move = user_hint(forced_board)
+    if move:
+        cell, frame = move
+        move_label.config(text=f"Hint: Try the highlighted yellow frame, Cell {cell+1}")
+    else:
+        move_label.config(text="No possible hint.")
+
+
+# ── CPU turn ──────────────────────────────────────────────────────────────────
+def cpu_turn(b_index):
+    stop_timer()
+    global current_player_frame
+
+    move = cpu_move_bb(b_index)
+
+    if not move:
+        big_board_check_winner()
+        return
+
+    cell, frame = move
+
+    graph_list[frame].updatevalue(cell, "O")
+    display_values()
+
+    # check small board winner
+    sb_checkwinner(frame + 1)
+
+    update_all_small_board_scores()
+
+    if big_board_check_winner():
+        return
+
+    # determine next board for user
+    target_frame_closed = big_boardgraph.vertices[cell].val in ["X", "O", "-"]
+    target_has_no_moves = all(v.val != "" for v in graph_list[cell].vertices)
+
+    if target_frame_closed or target_has_no_moves:
+        enable_all_valid_boards()
+        displaymove(cell, "notallowed", frame)
+        current_player_frame = None
+    else:
+        highlight_frame(cell)
+        enable_button(cell)
+        displaymove(cell, "allowed", frame)
+        current_player_frame = cell + 1
+
+    start_timer()
 
 def add_label(val, f_index):
     for widget in sf[f_index - 1].winfo_children():
