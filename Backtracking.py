@@ -54,7 +54,6 @@ time_remaining = TURN_TIME_LIMIT
 timer_job = None
 current_player_frame = None
 
-# ── Divide & Conquer line check ─────────────────────────────────────────────
 def dac_check_line(boardgraph, line, symbol):  # O(N)
     def helper(start, end):
         if start == end:
@@ -63,7 +62,6 @@ def dac_check_line(boardgraph, line, symbol):  # O(N)
         return helper(start, mid) and helper(mid + 1, end)
     return helper(0, len(line) - 1)
 
-# ── D&C min / max helpers ────────────────────────────────────────────────────
 def dmin(a):
     if len(a) == 1:
         return a[0]
@@ -82,7 +80,6 @@ def dmax(a):
 
 
 
-# ── Board helpers ─────────────────────────────────────────────────────────────
 def sb_checkwinner(f_index):  # O(1)
     boardgraph = graph_list[f_index - 1]
     if big_boardgraph.vertices[f_index - 1].val in ["X", "O", "-"]:
@@ -112,15 +109,34 @@ def big_board_check_winner():  # O(N)
 
 # functions to be added (in progress)
 
-# sim_move
+def sim_move(f, c, sym):  # O(1)
+    original_big_board_val = big_boardgraph.vertices[f].val
+    graph_list[f].vertices[c].val = sym
+    won_small = False
+    if original_big_board_val == "":
+        for s in ["X", "O"]:
+            for line in WINNING_LINES:
+                if dac_check_line(graph_list[f], line, s):
+                    big_boardgraph.vertices[f].val = s
+                    won_small = True
+                    break
+            if won_small:
+                break
+        if not won_small:
+            if all(v.val in ["X", "O"] for v in graph_list[f].vertices):
+                big_boardgraph.vertices[f].val = "-"
+    return won_small, original_big_board_val
 
+def undo_move(f, c, original_big_board_val):  # O(1)
+    graph_list[f].vertices[c].val = ""
+    big_boardgraph.vertices[f].val = original_big_board_val
 
-# undo_move
+def snapshot_state():  # O(81)
+    big_snap = [v.val for v in big_boardgraph.vertices]
+    small_snap = [[v.val for v in g.vertices] for g in graph_list]
+    return big_snap, small_snap
 
-# snapshot_state
-
-# restore_state
-
+# restore state
 
 
 def score_small_board(boardgraph, cpu="O", user="X"):
@@ -163,7 +179,6 @@ def update_all_small_board_scores():
 
 #show hint
 
-# ── UI helpers ────────────────────────────────────────────────────────────────
 def add_label(val, f_index):
     for widget in sf[f_index - 1].winfo_children():
         if isinstance(widget, tk.Label):
@@ -239,7 +254,6 @@ def displaymove(a, v, f):
     else:
         move_label.config(text=f"CPU played F{cpu_frame} C{cpu_cell}. Your next move should be in the highlighted yellow frame.")
 
-# ── Timer ─────────────────────────────────────────────────────────────────────
 def update_timer():
     global time_remaining, timer_running, timer_job
     if not timer_running:
@@ -330,7 +344,6 @@ def reset_game():
 # ── UI build ──────────────────────────────────────────────────────────────────
 w = tk.Tk()
 w.geometry("1024x720")
-# FIX 3: updated title to reflect actual algorithm used
 w.title("X-O Nexus  [D&C + Branch & Bound]")
 w.resizable(False, False)
 f_bg = tk.Frame(w, bd=2, relief="ridge", bg="#547792")
