@@ -259,8 +259,39 @@ def branch_and_bound(board_index, depth, alpha, beta, maximizing):
 
         return best
     
+def cpu_move_bb(b_index):
 
-# cpu move bb
+    best_score = -9999
+    best_move = None
+
+    if big_boardgraph.vertices[b_index - 1].val == "":
+        frames = [b_index - 1]
+    else:
+        frames = [i for i in range(9) if big_boardgraph.vertices[i].val == ""]
+
+    for f in frames:
+        for c in range(9):
+
+            if graph_list[f].vertices[c].val != "":
+                continue
+
+            won_small, orig_val = sim_move(f, c, "O")
+
+            score = branch_and_bound(
+                c,
+                3,        # search depth
+                -9999,
+                9999,
+                False
+            )
+
+            undo_move(f, c, orig_val)
+
+            if score > best_score:
+                best_score = score
+                best_move = (c, f)
+
+    return best_move
 
 def rec_dc(b_index, depth, turn):
     if depth == 0:
