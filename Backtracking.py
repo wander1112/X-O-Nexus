@@ -78,8 +78,6 @@ def dmax(a):
     r = dmax(a[m:])
     return l if l > r else r
 
-
-
 def sb_checkwinner(f_index):  # O(1)
     boardgraph = graph_list[f_index - 1]
     if big_boardgraph.vertices[f_index - 1].val in ["X", "O", "-"]:
@@ -106,9 +104,6 @@ def big_board_check_winner():  # O(N)
         show_big_winner("-")
         return True
     return False
-
-# functions to be added (in progress)
-
 def sim_move(f, c, sym):  # O(1)
     original_big_board_val = big_boardgraph.vertices[f].val
     graph_list[f].vertices[c].val = sym
@@ -143,7 +138,6 @@ def restore_state(big_snap, small_snap):  # O(81)
         for ci, val in enumerate(board_snap):
             graph_list[gi].vertices[ci].val = val
 
-
 def score_small_board(boardgraph, cpu="O", user="X"):
     score = 0
     for line in WINNING_LINES:
@@ -170,7 +164,6 @@ def update_all_small_board_scores():
         else:
             small_board_scores[i] = -9999
 
-
 def eval_state_dc():
     score = 0
     for s in ["O", "X"]:
@@ -183,7 +176,7 @@ def eval_state_dc():
         elif val == "X": score -= 100
     return score
 
-def branch_and_bound(board_index, depth, alpha, beta, maximizing):
+def tree_mapping(board_index, depth, alpha, beta, maximizing):
 
     # stop search if depth reached
     if depth == 0:
@@ -209,7 +202,7 @@ def branch_and_bound(board_index, depth, alpha, beta, maximizing):
                 won_small, orig_val = sim_move(f, c, "O")
 
                 next_board = c
-                score = branch_and_bound(
+                score = tree_mapping(
                     next_board,
                     depth - 1,
                     alpha,
@@ -241,7 +234,7 @@ def branch_and_bound(board_index, depth, alpha, beta, maximizing):
                 won_small, orig_val = sim_move(f, c, "X")
 
                 next_board = c
-                score = branch_and_bound(
+                score = tree_mapping(
                     next_board,
                     depth - 1,
                     alpha,
@@ -277,7 +270,7 @@ def cpu_move_bb(b_index):
 
             won_small, orig_val = sim_move(f, c, "O")
 
-            score = branch_and_bound(
+            score = tree_mapping(
                 c,
                 3,        # search depth
                 -9999,
@@ -346,47 +339,6 @@ def show_hint():
         move_label.config(text=f"Hint: Try the highlighted yellow frame, Cell {cell+1}")
     else:
         move_label.config(text="No possible hint.")
-
-
-# ── CPU turn ──────────────────────────────────────────────────────────────────
-def cpu_turn(b_index):
-    stop_timer()
-    global current_player_frame
-
-    move = cpu_move_bb(b_index)
-
-    if not move:
-        big_board_check_winner()
-        return
-
-    cell, frame = move
-
-    graph_list[frame].updatevalue(cell, "O")
-    display_values()
-
-    # check small board winner
-    sb_checkwinner(frame + 1)
-
-    update_all_small_board_scores()
-
-    if big_board_check_winner():
-        return
-
-    # determine next board for user
-    target_frame_closed = big_boardgraph.vertices[cell].val in ["X", "O", "-"]
-    target_has_no_moves = all(v.val != "" for v in graph_list[cell].vertices)
-
-    if target_frame_closed or target_has_no_moves:
-        enable_all_valid_boards()
-        displaymove(cell, "notallowed", frame)
-        current_player_frame = None
-    else:
-        highlight_frame(cell)
-        enable_button(cell)
-        displaymove(cell, "allowed", frame)
-        current_player_frame = cell + 1
-
-    start_timer()
 
 def add_label(val, f_index):
     for widget in sf[f_index - 1].winfo_children():
@@ -512,7 +464,44 @@ def time_up_forfeit():
             return
     w.after(1500, lambda: cpu_turn(target_frame))
 
-# cpu turn 
+def cpu_turn(b_index):
+    stop_timer()
+    global current_player_frame
+
+    move = cpu_move_bb(b_index)
+
+    if not move:
+        big_board_check_winner()
+        return
+
+    cell, frame = move
+
+    graph_list[frame].updatevalue(cell, "O")
+    display_values()
+
+    # check small board winner
+    sb_checkwinner(frame + 1)
+
+    update_all_small_board_scores()
+
+    if big_board_check_winner():
+        return
+
+    # determine next board for user
+    target_frame_closed = big_boardgraph.vertices[cell].val in ["X", "O", "-"]
+    target_has_no_moves = all(v.val != "" for v in graph_list[cell].vertices)
+
+    if target_frame_closed or target_has_no_moves:
+        enable_all_valid_boards()
+        displaymove(cell, "notallowed", frame)
+        current_player_frame = None
+    else:
+        highlight_frame(cell)
+        enable_button(cell)
+        displaymove(cell, "allowed", frame)
+        current_player_frame = cell + 1
+
+    start_timer()
 
 def clicked(f_index, b_index):
     if graph_list[f_index - 1].vertices[b_index - 1].val != "":
@@ -548,12 +537,10 @@ def reset_game():
     move_label.config(text="You start! Make your move anywhere.")
     start_timer()
 
-
-    
-# ── UI build ──────────────────────────────────────────────────────────────────
 w = tk.Tk()
 w.geometry("1024x720")
-w.title("X-O Nexus  [D&C + Branch & Bound]")
+# FIX 3: updated title to reflect actual algorithm used
+w.title("X-O Nexus ")
 w.resizable(False, False)
 f_bg = tk.Frame(w, bd=2, relief="ridge", bg="#547792")
 f_bg.place(x=0, y=0, height=720, width=1024)
