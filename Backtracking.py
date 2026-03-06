@@ -183,8 +183,82 @@ def eval_state_dc():
         elif val == "X": score -= 100
     return score
 
+def branch_and_bound(board_index, depth, alpha, beta, maximizing):
 
-# branch and bound 
+    # stop search if depth reached
+    if depth == 0:
+        return eval_state_dc()
+
+    # determine valid boards according to rule
+    if big_boardgraph.vertices[board_index].val == "":
+        frames = [board_index]
+    else:
+        frames = [i for i in range(9) if big_boardgraph.vertices[i].val == ""]
+
+    # CPU turn
+    if maximizing:
+
+        best = -9999
+
+        for f in frames:
+            for c in range(9):
+
+                if graph_list[f].vertices[c].val != "":
+                    continue
+
+                won_small, orig_val = sim_move(f, c, "O")
+
+                next_board = c
+                score = branch_and_bound(
+                    next_board,
+                    depth - 1,
+                    alpha,
+                    beta,
+                    False
+                )
+
+                undo_move(f, c, orig_val)
+
+                best = max(best, score)
+                alpha = max(alpha, best)
+
+                if beta <= alpha:
+                    break
+
+        return best
+
+    # USER turn
+    else:
+
+        best = 9999
+
+        for f in frames:
+            for c in range(9):
+
+                if graph_list[f].vertices[c].val != "":
+                    continue
+
+                won_small, orig_val = sim_move(f, c, "X")
+
+                next_board = c
+                score = branch_and_bound(
+                    next_board,
+                    depth - 1,
+                    alpha,
+                    beta,
+                    True
+                )
+
+                undo_move(f, c, orig_val)
+
+                best = min(best, score)
+                beta = min(beta, best)
+
+                if beta <= alpha:
+                    break
+
+        return best
+    
 
 # cpu move bb
 
